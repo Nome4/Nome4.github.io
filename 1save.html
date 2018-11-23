@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="pt">
+  <head>
+    <meta charset="utf-8">
+    <title>Under Tail</title>
+    <link rel="stylesheet" href="1save.css">
+    <script>
+    function imgLoadFail(thiz){
+      let pai=thiz.parentNode;
+      thiz.remove();
+      let novo=document.createElement("pre");
+      pai.appendChild(novo);
+      novo.innerHTML="\
+                                   `-----`\n\
+                                `:+/-----/++++++/``\n\
+                               .s-       -   ````//++-\n\
+                              `y.        -y...      .o-\n\
+                             -y`          /NNhys.:   /o\n\
+                            -s..         .mNhsyyso   /o\n\
+                           .hsy-        `ym+syhNNh  `o/\n\
+                            .`d         /Nm/::+oyd  :s\n\
+                             ++       .sNMMm+s/yho `h`\n\
+                            -s.     .sNMmdMMNm:yy .s-\n\
+                           -s`  ..:/hMNNddNdNN:o- ++\n\
+                           /o+++:o-`sMhossosNm-: -`s/\n\
+                            ```` .y-:omNhyNNy-`.:o/+y\n\
+            `//+sss+++++ssssss+//-://:.oyyy-.::+::/+oosssso++++osso//:\n\
+             ...:::+++::/:::://..+d+. `````` `:yh-.-+:::://:/++/::-..`\n\
+                     y/oo+-     `s+/////////////s:     `:+++`\n\
+                     h:s.os+.  `o:--/..    .:`/-.o-   /+-s:y\n\
+                    :s+/.`/++- +/./:-/:.  /dd`hm+.y`.:s`./+s-\n\
+                    o+y-/hh``:+y:.+/-+/-  +mNhNNo h+/.dy/:yo+\n\
+                   -yo- .y-   `:+-..:.-    -oo+-.:+.  -y. :oy-\n\
+                   y++-.s:      `:o.++osooss++-:o.     /o.-++y`\n\
+                  o+o/:oo`        +om-dmmhmmo+ss.      `so:++o+\n\
+                 :d// +s.       `-/om`+dMMNy-+sy.`      .s/ ++h-\n\
+                .so/+sh`       -/:+om```+y-``oos./:`     .hs+/so`\n\
+               -s/+`:s.     `-+-` ``+//:--://+-   .+:`    .s-.//o-\n\
+     ````    -/s//+y+.     -+:`       ``::-`        -/:`   .+y+//s:-    ````\n\
+    /hdmds//o+s+`./+     -/:                          .+:`   +/..+s+o//smmhy:\n\
+    `-oddmMdsho++:`    -+:`       ````------`````       -/:`  .:++shsmMmddo-`\n\
+   .+sdmmNNd+/`      -/:`    `..://///:-----/////:-..     -/:`    `/+mMNmmds+`\n\
+ `+shhhNmo:`       `/+`    ./oso.`               ./so/-`    :+.      `:sNNhdys+`\n\
+ `osymms.        `/+.    .//.`                       .:+-    `/+.       .smmyoo`\n\
+  ``--.        `:/:/:...++`                            `:o-..://:/.       .-..`\n\
+             `/+.  `.//+y+                              -yo//-`  `:+.\n\
+           `:/.      `:/-                                `//.      `:+.\n\
+         `/+.      `:+.                                    `//.      `//.\n\
+       `:/.       :+-                                        `/+       `/+.\n\
+     `/+.      `` o/                                          `d ``      `//.\n\
+   `:+.       :od.o:                                          `h.yo+       `/+.\n\
+ `/+-`````-////.-/.                                            `//`:+//:`````.++.\n\
+ :+////////```                                                      ```-///////+/  ";
+      novo.style.cssText=
+        "font-size:4.9rem;";
+    }
+    </script>
+  </head>
+  <body>
+    <div id="menu">
+      <header>
+        <h1>Cópia barata de<img src="https://mbtskoudsalg.com/images/undertale-logo-png-3.png" alt="Undertale" id="logo"></h1>
+        <h2>Luta contra Mettaton Neo</h2>
+      </header>
+      <nav id="botoesMenu">
+        <div>
+          <button>Novo jogo</button>
+          <button>Continuar jogo
+            <div class="tooltip left">
+              <div>
+                <dl id="ttSave"></dl>
+                <span class="tri"></span>
+              </div>
+            </div>
+          </button>
+          <button>Tutorial</button>
+        </div>
+        <div>
+          <button id="dif">Dificuldade
+            <div class="tooltip right">
+              <div id="conteudoDif">
+                <div>
+                  😴<div id="meter">
+                    <div id="slider"></div>
+                    <div id="track"></div>
+                  </div>☠️
+                </div>
+                <p>A dificuldade aumenta a velocidade das fases.</p>
+                <span class="tri"></span>
+              </div>
+            </div>
+          </button>
+          <button disabled>Treinamento</button>
+          <button disabled>apsjidpaosojid</button>
+        </div>
+      </nav>
+      <div class="modal">
+        <section>
+          <h2>Escolha uma fase</h2>
+        </section>
+      </div>
+    </div>
+    <div id="app" class="oculto">
+      <button id="close" class="fechar"></button>
+      <div id="coracaoErrante" class="coracao">
+        <div class="arredondador"></div>
+        <div class="arredondador"></div>
+      </div>
+      <figure id="oponente">
+        <div id="barraOpon" class="pseudoOculto">
+          <div id="vidaOpon"></div>
+        </div>
+        <div id="imgOpon">
+          <img src="boss.gif" onerror='imgLoadFail(this)'>
+          <img src="Toriel.png">
+          <img src="TorielBrava.png">
+          <img src="boneco.gif">
+        </div>
+        <div id="balao" class="oculto"></div>
+      </figure>
+      <div id="jogo-wrapper">
+        <div id="jogo">
+          <div id="batalha">
+            <div id="coracao" class="coracao">
+              <div class="arredondador"></div>
+              <div class="arredondador"></div>
+            </div>
+            <div id="obstaculos"></div>
+            <div id="ff"> x<span id="multFF">1.0</span></div>
+          </div>
+          <div id="fight" class="tx">
+            <div id="barraAtk">
+              <div id="grid">
+                <div class="preRuim"></div>
+                <div class="ruim"></div>
+                <div class="preMedio"></div>
+                <div class="medio"></div>
+                <div class="preBom"></div>
+                <div class="bom"></div>
+                <div class="meio"></div>
+                <div class="bom"></div>
+                <div class="preBom"></div>
+                <div class="medio"></div>
+                <div class="preMedio"></div>
+                <div class="ruim"></div>
+                <div class="preRuim"></div>
+              </div>
+              <div id="tiros"></div>
+            </div>
+          </div>
+          <div id="act" class="tx">
+            <ul>
+              <li>Check</li>
+            </ul>
+          </div>
+          <div id="item" class="tx">
+            <ul class="dlpl">
+              <li>Pie</li>
+              <li>Steak</li>
+              <li>Steak</li>
+              <li>Steak</li>
+              <li>Sea Tea</li>
+              <li>Sea Tea</li>
+              <li>L. Hero</li>
+              <li>L. Hero</li>
+            </ul>
+          </div>
+          <div id="mercy" class="tx">
+            <ul>
+              <li>Spare</li>
+            </ul>
+          </div>
+          <div id="ane" class="visivel tx">
+            <p>Insira texto aqui.</p>
+          </div>
+          <div id="itemUsado" class="tx">
+            <p id="voceComeu"></p>
+            <p id="hpRestaurado"></p>
+            <p id="extra"></p>
+          </div>
+          <div id="checkMsg" class="tx">
+            <p>Mettaton NEO - 90 ATK 9 DEF</p>
+            <p>Otimizado para ataque, mas com defesa e bateria ineficientes.</p>
+            <p>Sua bateria está em 88%.</p>
+          </div>
+        </div>
+      </div>
+      <div id="hp">
+        HP
+        <div id="barra">
+          <div id="vida"></div>
+        </div>
+        <span id="vidaAtual">20</span>/<span id="vidaMax">20</span>
+      </div>
+      <nav id="botoes">
+        <button data-div="fight">FIGHT</button>
+        <button data-div="act">ACT</button>
+        <button data-div="item">ITEM</button>
+        <button data-div="mercy">MERCY</button>
+      </nav>
+    </div>
+    <script src="1save.js"></script>
+  </body>
+</html>
