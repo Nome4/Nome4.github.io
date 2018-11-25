@@ -90,7 +90,6 @@ body{
   background-color: #9f0000;
   border-radius: 50%;
   text-align: center;
-  cursor: pointer;
 }
 .fechar::before{
   content: "×";
@@ -368,10 +367,6 @@ body{
   --wait:1;
   --waitpont:5;
 }
-[id="balao"] *{ /* Para não precisar de !important */
-  --wait:inherit;
-  --waitpont:inherit;
-}
 #balao::before{
   content: "";
   position: absolute;
@@ -440,7 +435,6 @@ body{
   display: flex;
 }
 #botoes>button{
-  background: none;
   color:var(--corBtn);
   border:2rem solid var(--corBtn);
   font-size: 32rem;
@@ -667,6 +661,13 @@ body{
 
 /* Menu */
 
+button{
+  background: none;
+  color:inherit;
+}
+#menu button{
+  cursor: pointer;
+}
 #menu header{
   font-family:serif;
   color:#bfbfbf;
@@ -700,7 +701,6 @@ body{
 }
 #botoesMenu button{
   position: relative;
-  background: none;
   display: block;
   width:100%;
   margin-top: 24rem;
@@ -709,7 +709,6 @@ body{
   color:var(--corBtn);
   border:2rem solid var(--corBtn);
   outline:0;
-  cursor: pointer;
   -webkit-text-stroke: 0 var(--corBtn);
   transition: color 250ms linear,-webkit-text-stroke 250ms linear;
 }
@@ -757,20 +756,25 @@ body{
 .modal h2,.modal h3{
   font-family: monospace;
   line-height: 1.15;
-  padding-bottom: 16rem;
 }
 .modal h2{
   font-size: 32rem;
   margin-right: 62rem;
   padding-top: 16rem;
+  padding-bottom: 12rem;
 }
 .modal h3{
   font-size: 24rem;
   padding-top: 8rem;
+  padding-bottom: 12rem;
 }
 
-.modal>*>p{
+.modal>*>p,.modal .p{
   padding-bottom: 12rem;
+}
+
+.modal>*>:last-child{
+  padding-bottom: 0;
 }
 
 
@@ -858,16 +862,17 @@ body{
 
 /* Range input */
 
-#meter{
+.meter{
   margin: 0 6rem;
   width:120rem;
   height:24rem;
   --largSlider:12rem;
   position: relative;
-  display: flex;
+  display: inline-flex;
+  vertical-align: middle;
   align-items: center;
 }
-#slider{
+.slider{
   height:100%;
   position: absolute;
   left:0;
@@ -877,7 +882,7 @@ body{
   box-sizing: border-box;
   background-color: #ffffff;
 }
-#track{
+.track{
   height:6rem;
   background-color: #979797;
   width: 100%;
@@ -890,6 +895,7 @@ body{
   transition: none;
   --corBtn:#7f7f7f;
   -webkit-text-stroke:0;
+  cursor: auto;
 }
 #botoesMenu button[disabled]>.tooltip{
   display: none;
@@ -912,4 +918,42 @@ body{
 }
 #ttSave dt::after{
   content: ": ";
+}
+
+
+/* Treinamento */
+
+#treino{
+  --largLi:80rem;
+  width:calc(var(--largLi) * 4.77);
+}
+#fases{
+  list-style: none;
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  margin: calc(4rem - 2.5%) 0;
+}
+#fases>li{
+  width:var(--largLi);
+  padding:2.5% 0 2.5% 5%;
+  box-sizing: border-box;
+  height:var(--largLi);
+}
+#fases>li.final{
+  width:calc(2 * var(--largLi));
+}
+#fases>li:nth-child(5n+1){
+  padding-left:0;
+  width:calc(var(--largLi) - 5%);
+}
+#fases>li>*{
+  height:100%;
+  width:100%;
+  box-sizing: border-box;
+  border:3rem solid white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--largLi) / 2.5);
 }
