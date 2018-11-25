@@ -43,7 +43,7 @@ body{
 #jogo.hasTransition{
   transition: width 500ms linear,height 500ms linear;
 }
-#jogo>:not(.visivel){
+#jogo>:not(.visivel),#checkMsg>:not(.visivel){
   display: none;
 }
 #jogo.overflow{
