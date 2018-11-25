@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <title>Under Tail</title>
-    <link rel="stylesheet" href="css.css">
+    <link rel="stylesheet" href="1save.css">
     <script>
     function imgLoadFail(thiz){
       let pai=thiz.parentNode;
@@ -80,9 +80,9 @@
             <div class="tooltip right">
               <div id="conteudoDif">
                 <div>
-                  😴<div id="meter">
-                    <div id="slider"></div>
-                    <div id="track"></div>
+                  😴<div class="meter" data-start="0.5">
+                    <div class="slider"></div>
+                    <div class="track"></div>
                   </div>☠️
                 </div>
                 <p>A dificuldade aumenta a velocidade das fases.</p>
@@ -90,13 +90,22 @@
               </div>
             </div>
           </button>
-          <button disabled>Treinamento</button>
+          <button>Treinamento</button>
           <button disabled>apsjidpaosojid</button>
         </div>
       </nav>
       <div class="modal">
-        <section>
+        <section id="treino">
           <h2>Escolha uma fase</h2>
+          <ol id="fases" class="p"></ol>
+          <h3>Velocidade</h3>
+          <div class="p">
+            Normal<div class="meter" data-start="0">
+              <div class="slider"></div>
+              <div class="track"></div>
+            </div>Alta
+          </div>
+          <p>A partir de quando as fases começam a repetir, a velocidade vai aumentando.</p>
         </section>
       </div>
     </div>
@@ -199,6 +208,6 @@
         <button data-div="mercy">MERCY</button>
       </nav>
     </div>
-    <script src="js.js"></script>
+    <script src="1save.js"></script>
   </body>
 </html>
