@@ -29,46 +29,56 @@ const imgOpon=     document.querySelector("#imgOpon");
 
 // Range input
 
-const slider=document.querySelector("#slider");
-const externo=document.querySelector("#meter");
+const sliders=document.querySelectorAll(".slider");
+const externos=document.querySelectorAll(".meter");
+const tracks=document.querySelectorAll(".track");
 const largTrack=120,largSlider=12;
 const maxSlide=largTrack-largSlider;
 let rem;
-let xMouseclick,sliderLeft,sliderLeftClick,xInicTrack;
-let sliderLeftRem=maxSlide/2;
-slider.style.left=sliderLeftRem+"rem";
-
-function sliderMousemove(e){
-  sliderLeft=e.pageX-xMouseclick+sliderLeftClick;
-  if(sliderLeft<0){
-    sliderLeft=0;
-  }
-  else{
-    let maxPx=maxSlide*rem;
-    if(sliderLeft>maxPx){
-      sliderLeft=maxPx;
-    }
-  }
-  sliderLeftRem=sliderLeft/rem;
-  slider.style.left=sliderLeftRem+"rem";
+let xMouseclick,slidersLeft=[],slidersLeftClick=[],xInicTracks=[];
+let slidersLeftRem=[],vals=[];
+for(let i=0; i<sliders.length; i++){
+  slidersLeftRem[i]=(+externos[i].dataset.start)*maxSlide;
+  sliders[i].style.left=slidersLeftRem[i]+"rem";
 }
 
-slider.addEventListener("mousedown",function (e) {
-  xMouseclick=e.pageX;
-  sliderLeftClick=sliderLeft;
-  addEventListener("mousemove",sliderMousemove);
-});
-externo.addEventListener("mousedown",function (e) {
-  if(e.target!=slider){
-    xMouseclick=e.pageX;
-    sliderLeftClick=xMouseclick-largSlider/2*rem-xInicTrack;
-    sliderMousemove(e);
-    addEventListener("mousemove",sliderMousemove);
+for(let i=0; i<sliders.length; i++){ // TODO
+  function sliderMousemove(e){
+    slidersLeft[i]=e.pageX-xMouseclick+slidersLeftClick[i];
+    if(slidersLeft[i]<0){
+      slidersLeft[i]=0;
+    }
+    else{
+      let maxPx=maxSlide*rem;
+      if(slidersLeft[i]>maxPx){
+        slidersLeft[i]=maxPx;
+      }
+    }
+    slidersLeftRem[i]=slidersLeft[i]/rem;
+    sliders[i].style.left=slidersLeftRem[i]+"rem";
   }
-});
-addEventListener("mouseup",function () {
-  removeEventListener("mousemove",sliderMousemove);
-});
+
+  sliders[i].addEventListener("mousedown",function (e) {
+    xMouseclick=e.pageX;
+    slidersLeftClick[i]=slidersLeft[i];
+    addEventListener("mousemove",sliderMousemove);
+  });
+  externos[i].addEventListener("mousedown",function (e) {
+    if(e.target!=sliders[i]){
+      xMouseclick=e.pageX;
+      slidersLeftClick[i]=xMouseclick-largSlider/2*rem-xInicTracks[i];
+      sliderMousemove(e);
+      addEventListener("mousemove",sliderMousemove);
+    }
+  });
+  addEventListener("mouseup",function () {
+    removeEventListener("mousemove",sliderMousemove);
+  });
+}
+
+function getValue(i){
+  return slidersLeftRem[i]/maxSlide;
+}
 
 
 
@@ -114,8 +124,8 @@ let hits;
 let acertou;
 let timeoutFim,timeouts;
 
-let tut, // Se está no tutorial
-  hitTracker,continuando,loaded;
+let tut=false, // Se está no tutorial
+  hitTracker,continuando,loaded,treinando=-1;
 
 
 const btnsMenu=document.querySelectorAll("#menu button");
@@ -181,12 +191,16 @@ function autoSize(){
     html.style.fontSize=rem+"px";
   }
 
-  xInicTrack=track.getBoundingClientRect().x;
+  for(let i=0; i<tracks.length; i++){
+    xInicTracks[i]=tracks[i].getBoundingClientRect().x;
+  }
 }
 
 document.querySelector("#conteudoDif>p").style.width=document.querySelector("#conteudoDif>div").offsetWidth+"rem";
 autoSize();
-sliderLeftClick=sliderLeft=rem*maxSlide/2;
+for(let i=0; i<tracks.length; i++){
+  slidersLeftClick[i]=slidersLeft[i]=slidersLeftRem[i]*rem;
+}
 addEventListener("resize",autoSize);
 
 const tudo=document.querySelectorAll("#app *");
@@ -391,7 +405,18 @@ function exit(){
   removeEventListener("keydown",keydown);
   if(pararJogo!=undefined) clearInterval(pararJogo);
   if(pararTxt!=undefined) clearInterval(pararTxt);
-  load();
+  if(tut){
+    tut=false;
+  }
+  else{
+    if(treinando==-1){
+      load();
+      continuando=false;
+    }
+    else{
+      treinando=-1;
+    }
+  }
 
   setTimeout(function () {
     for(let i=0; i<timeouts.length; i++){
@@ -416,7 +441,7 @@ function exit(){
       elsTemps[i].remove();
     }
     elsTemps=undefined;
-  },20);
+  },0);
 }
 
 
@@ -446,13 +471,17 @@ function resetRonda(){
 
   if(naoEPrimeira){
     removerVetorEl(obsts);
+    if(!tut && treinando!=-1){
+      exit();
+      return;
+    }
   }
   else{
     naoEPrimeira=true;
     nepAntigo=false;
   }
 
-  if(notTut || ronda>7){
+  if(treinando==-1 && (notTut || ronda>7)){
     if(fase>=fases.length){
       if(notTut){
         fase=0;
@@ -591,10 +620,10 @@ function atualizaPosNormal(obs){
   atualizaPosX(obs,obs.x);
   atualizaPosY(obs,obs.y);
 }
-function resizeX(obs,val){
+function resizeX(obs,val=obs.larg){
   obs.style.width=(obs.widthRem=val)+"rem";
 }
-function resizeY(obs,val){
+function resizeY(obs,val=obs.alt){
   obs.style.height=(obs.heightRem=val)+"rem";
 }
 
@@ -1541,6 +1570,999 @@ function criarChave(x,y){
 }
 
 
+// Fases
+
+const fasesPadrao=[
+  {//r1
+    larg:240,
+    alt:240,
+    fn:function () {
+      function naSorte(x,vely,ft){
+        let cores=["azul","branco","laranja"];
+        const ordem=[[1,false],[-1,true],[-1,false],[1,true]];
+        for(let i=0; i<x; i++){
+          embaralhar(cores);
+          laserColorido(l(6,sinalAleatorio(i%2? 0.66667: 1.33333),ordem[i][0]*vely,ft(i),cores,ordem[i][1],240,undefined,Math.random()*79));
+        }
+      }
+
+      setMultDific(1,1);
+      const spd1=1.1111111111,spd2=0.8888888889;
+
+      naSorte(4,spd1,function (i) {
+        return 144*i;
+      });
+
+      naSorte(4,spd2,function (i) {
+        switch(i){
+          case 0:
+          return 644;
+          case 1:
+          return 696;
+          case 2:
+          return 936;
+          case 3:
+          return 1003;
+        }
+      });
+
+      tFim=1600;
+    }
+  },
+
+  {//r2
+    larg:240,
+    alt:24,
+    fn:function () {
+      setMultDific(1);
+      const cores2=["laranja","azul"];
+      let t=0;
+      const velx1=1.5,vely1=1.5,velx2=0.75,vely2=1.5;
+      const disty=264,distx=280,multRapido=0.5;
+
+      laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,false,360,undefined,Math.random()*80));
+      t+=Math.round(disty/vely1);
+      laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
+        if(x>(larg-roac)/2) o.velY*=-1;
+      });
+      t+=Math.round(distx/vely1);
+
+      laserColorido(l(6,sinalAleatorio(velx2),vely2,t,cores2,false,360,undefined,Math.random()*80));
+      t+=Math.round(disty/vely2*multRapido);
+      laserColorido(l(6,sinalAleatorio(velx2),vely2,t,cores2,false,360,undefined,Math.random()*80));
+      t+=Math.round(disty/vely2*multRapido);
+      laserColorido(l(6,sinalAleatorio(velx2),vely2,t,cores2,false,360,undefined,Math.random()*80));
+      t+=Math.round(disty/vely2);
+
+      let ladoEscolhido;
+      laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
+        if(x>(larg-roac)/2){
+          ladoEscolhido=-1;
+          o.velY*=-1;
+        }
+        else{
+          ladoEscolhido=1;
+        }
+      });
+      t+=Math.round(disty/vely2*multRapido);
+      laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
+        o.velY*=ladoEscolhido;
+      });
+      t+=Math.round(disty/vely2*multRapido);
+      laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
+        o.velY*=ladoEscolhido;
+      });
+      t+=Math.round(distx*2/vely2); // Vezes 2 porque sim
+
+      tFim=t;
+    }
+  },
+
+  {//r3
+    larg:240,
+    alt:240,
+    fn:function () {
+      setMultDific(0.6);
+      const vel=1,num=24,tCada=120;
+
+      for(let i=0; i<num; i++){
+        caixa({
+          velY:vel,
+          toler:240,
+          cor:"branco",
+          tSurg:i*tCada
+        },function(o){
+          if(i%2==1){
+            o.girar270=true;
+            o.deslocX=y-8; // 8 pq eh o tam da caixa menos o do coracao sobre 2
+          }
+          else{
+            o.girar270=false;
+            o.deslocX=x-8;
+          }
+
+          const j=i%4;
+          if(j==1 || j==2){
+            o.velY*=-1;
+          }
+        });
+      }
+
+      for(let i=0; i<7; i++){
+        gaster({
+          tSurg:360*(i+1),
+          tAviso:160,
+          x:(larg-largLaser)/2,
+          girar180:Math.random()<0.5
+        },function (o) {
+          o.girar270=Math.abs(x-(larg-roac)/2)<Math.abs(y-(alt-roac)/2);
+        });
+      }
+
+      tFim=num*tCada;
+      const incr=(1/tFim)*1.5*multDific;
+
+      funcFrameAntes=function () {
+        multFF+=incr;
+        spanFF.innerHTML=multFF.toFixed(1);
+      };
+
+      divFF.classList.add("visivel");
+    }
+  },
+
+  {//r4
+    larg:76,
+    alt:110,
+    fn:function () {
+      setMultDific(1.25);
+      const vel=6.66667,num=10;
+      const tCada=tamCaixa/vel*4;
+      const cores=["azul","laranja"];
+      let ultimo=1;
+
+      atualizaFF(0.25);
+
+      for(let i=0; i<num; i++){
+        caixa({
+          velY:vel,
+          toler:240,
+          cor:function () {
+            let ind;
+            if(ultimo==0){
+              ind=1;
+            }
+            else{
+              ind=Math.random()<0.5? 0: 1;
+            }
+            ultimo=ind;
+            return cores[ind];
+          }(),
+          tSurg:25+i*tCada,
+          deslocX:(larg-tamCaixa)/2
+        });
+      }
+
+      laserColorido(l(6,2,0,0,["branco","azul"],true,-21));
+      laserColorido(l(6,-2,0,0,["branco","azul"],true,-55));
+
+      tFim=tCada*num+(280+alt)/vel;
+      divFF.classList.add("visivel");
+    }
+  },
+
+  {//r5
+    larg:240,
+    alt:240,
+    fn:function () {
+      setMultDific(1);
+      atualizaFF(64);
+      divFF.classList.add("visivel");
+
+      criarPlat(0,largPlat,false);
+      criarPlat(2*largPlat,0,true);
+      criarPlat(2.5*largPlat,0*largPlat,true,2.25*largPlat);
+      criarPlat(2*largPlat,5*largPlat,false);
+      criarPlat(2*largPlat,4*largPlat,false);
+      criarPlat(5*largPlat,4.5*largPlat,false);
+      criarPlat(3.75*largPlat,2*largPlat,false,2.25*largPlat);
+      criarPlat(1.25*largPlat,5*largPlat,true);
+      criarPlat(4*largPlat,3*largPlat,true);
+      criarPlat(0.25*largPlat,2.5*largPlat,true,2*largPlat);
+      criarPlat(3.25*largPlat,1*largPlat,false,1.5*largPlat);
+      criarPlat(4*largPlat,0,true);
+      criarPlat(2*largPlat,1*largPlat,false,0.5*largPlat);
+
+      funcFrameAntes=ffaPlat;
+      funcFrameDepois=ffdPlat;
+
+      let tInic=360;
+      const intvMedio=110,intvCurto=85,av1=160,av2=160,av3=440,av4=600;
+
+      function gasterEsperto(girar180,girar270,tSurg,tAviso){
+        gaster({
+          girar180:girar180,
+          girar270:girar270,
+          tSurg:tSurg,
+          tAviso:tAviso
+        },function (o) {
+          o.x=(girar270? y: x)-(largLaser-2*roac)/2;
+        });
+      }
+
+      gasterEsperto(false,false,100,av1);
+
+      gasterEsperto(false,false,tInic,av1);
+      tInic+=intvCurto;
+      gasterEsperto(false,true,tInic,av1);
+      tInic+=intvCurto;
+      gasterEsperto(true,false,tInic,av1);
+      tInic+=intvCurto;
+      gasterEsperto(true,true,tInic,av1);
+      tInic+=intvCurto+av1;
+
+      gasterEsperto(false,false,tInic,av2);
+      gasterEsperto(false,true,tInic,av2);
+      tInic+=intvMedio;
+      gasterEsperto(true,false,tInic,av2);
+      gasterEsperto(true,true,tInic,av2);
+      tInic+=intvMedio;
+      gasterEsperto(false,false,tInic,av2);
+      gasterEsperto(false,true,tInic,av2);
+      tInic+=intvMedio+av2;
+
+
+      const linhas=larg/largLaser;
+
+      function gasterSet(girar180,girar270,toler,tAviso){ // Melhorar quando der vontade
+        let linhaEsc=Math.floor(Math.random()*(linhas-1-toler));
+        if(linhaEsc==linhas-2-toler) linhaEsc++;
+
+        for(let i=0; i<linhas; i++){
+          if(i==linhaEsc){
+            if(linhaEsc!=0){
+              i+=toler+1;
+            }
+            else{
+              i+=toler;
+            }
+          }
+          else{
+            gaster({
+              girar180:girar180,
+              girar270:girar270,
+              tSurg:tInic,
+              tAviso:tAviso,
+              x:i*largLaser
+            });
+          }
+        }
+      }
+
+      gasterSet(false,true,1,av3);
+      gasterSet(false,false,1,av3);
+      tInic+=av3+50;
+
+      gasterSet(true,false,0,av4);
+      gasterSet(true,true,0,av4);
+      tInic+=av4+50;
+
+      tFim=tInic*multFF+100;
+    }
+  },
+
+  {//r6
+    larg:280,
+    alt:260,
+    fn:function () {
+      setMultDific(1);
+      atualizaFF(64);
+      divFF.classList.add("visivel");
+      x=2*largPlat+4;
+
+      criarPlat(2*largPlat,1.5*largPlat,false);
+      criarPlat(2*largPlat,1.5*largPlat,true,0.75*largPlat);
+      criarPlat(1.5*largPlat,4.5*largPlat,false);
+      criarPlat(5*largPlat,5*largPlat,false);
+      criarPlat(6*largPlat,4.25*largPlat,true,largPlat*3/4);
+      criarPlat(0,5.5*largPlat,false);
+      criarPlat(3.25*largPlat,5.5*largPlat,false,1.75*largPlat);
+      criarPlat(6*largPlat-3,3.5*largPlat,false,largPlat+3);
+      criarPlat(5.5*largPlat-3,1*largPlat,true);
+      criarPlat(4.5*largPlat-3,1*largPlat,false);
+      criarPlat(3*largPlat-3,3*largPlat,true,1.25*largPlat);
+
+      criarChave(5.5*largPlat-6,2*largPlat-4);
+      criarChave(larg-32,4.25*largPlat);
+
+      funcFrameAntes=function () {
+        multFF+=0.032*multDific;
+        spanFF.innerHTML=multFF.toFixed(0);
+        ffaPlat();
+      };
+      funcFrameDepois=function () {
+        ffdPlat();
+        ffdChave(numPlats);
+      };
+
+      for(let i=0; i<61; i++){ // MELHORAR ESSA ZORRA
+        const restoIpor4=i%4;
+        gaster({
+          girar180:restoIpor4==1 || restoIpor4==2,
+          girar270:restoIpor4==1 || restoIpor4==3,
+          tSurg:200+i*240,
+          tAviso:160,
+        },function (o) {
+          o.x=(o.girar270? y: x)-(largLaser-2*roac)/2;
+        });
+      }
+
+      tFim=6000*160;
+    }
+  },
+
+  {//r7
+    larg:80,
+    alt:80,
+    fn:function () {
+      setMultDific(1);
+      divFF.classList.add("visivel");
+      spanFF.innerHTML="1.0";
+      multFF=1;
+      const intv=320,pares=3;
+      const numGasters=pares*2;
+      const multPt2=4;
+      const areas=larg/largLaser;
+
+      let gastersAnts=[];
+      let areasPerigosas=[];
+      for(let i=0; i<areas; i++){
+        areasPerigosas[i]=[];
+      }
+
+      do{
+        for(let i=0; i<areas; i++){
+          for(let j=0; j<areas; j++){
+            areasPerigosas[i][j]=0;
+          }
+        }
+
+        for(let i=0; i<pares; i++){
+          function set(zeroou1){
+            const atual=2*i+zeroou1;
+            let parteQInteressa={};
+
+            function setRandom(){
+              parteQInteressa.girar180=p=Math.random()>0.5;
+              parteQInteressa.areaX=Math.floor(Math.random()*areas);
+              if(atual>=2){
+                if(parteQInteressa.girar180==gastersAnts[atual-2].girar180
+                && parteQInteressa.areaX==gastersAnts[atual-2].areaX){
+                  parteQInteressa.girar180=!parteQInteressa.girar180;
+                }
+              }
+            }
+
+            function addLinha(j){
+              for(let i=0; i<areas; i++){
+                areasPerigosas[j][i]++;
+              }
+            }
+            function addCol(j){
+              for(let i=0; i<areas; i++){
+                areasPerigosas[i][j]++;
+              }
+            }
+
+            setRandom();
+            if(zeroou1==1){
+              addLinha(parteQInteressa.areaX);
+            }
+            else{
+              addCol(parteQInteressa.areaX);
+            }
+            gastersAnts[atual]=parteQInteressa;
+          }
+
+          set(0);
+          set(1);
+        }
+      } while(function(){
+        for(let i=0; i<areas; i++){
+          for(let j=0; j<areas; j++){
+            if(areasPerigosas[i][j]==0) return true;
+          }
+        }
+        return false;
+      }());
+
+      for(let i=0; i<numGasters; i++){
+        gaster({
+          girar180:gastersAnts[i].girar180,
+          girar270:i%2==1,
+          x:gastersAnts[i].areaX*largLaser,
+          tAviso:intv,
+          tSurg:Math.floor(i/2)*intv
+        },function (o) {
+          if(multFF>1){
+            o.tAtk=Math.round(50/multPt2);
+            o.dano=9/o.tAtk;
+          }
+        });
+      }
+
+
+      const tRev=(pares*intv+50)/multDific;
+      let varia=0;
+      let nZerou1=true,nZerou2=true,nIniciou2=true;
+
+      function resetObsts(){
+        for(let i=0; i<numObst; i++){
+          obsts[i].apareceu=false;
+        }
+      }
+
+      funcFrameAntes=function () {
+        if(t>tRev && nIniciou2){
+          if(multFF>0) varia++;
+          else{
+            varia--;
+            if(nZerou1){
+              divFF.classList.add("reverso");
+              resetObsts();
+              nZerou1=false;
+            }
+          }
+          multFF-=0.0004*varia;
+          spanFF.innerHTML=Math.abs(multFF).toFixed(1);
+        }
+        else if(!nZerou1 && (t<=0 || !nIniciou2) && multFF<multPt2){
+          if(nIniciou2){
+            varia=0;
+            nIniciou2=false;
+            tFim=tRev+50; // tFim de verdade
+          }
+          if(multFF<(-1+multPt2)/2){
+            varia++;
+            if(nZerou2 && multFF>0){
+              divFF.classList.remove("reverso");
+              resetObsts();
+              nZerou2=false;
+            }
+          }
+          else{
+            varia--;
+          }
+          if(varia==0){
+            nZerou1=true;
+          }
+          else{
+            multFF+=0.00016*varia;
+            spanFF.innerHTML=Math.abs(multFF).toFixed(1);
+          }
+        }
+      }
+      tFim=10000;
+    }
+  },
+
+  {//r8
+    larg:400,
+    alt:400,
+    fn:function () {
+      setMultDific(0.5);
+      y=alt-2*roac-10;
+      x=10;
+
+      tFim=2000;
+      const tLava=2000;
+
+      obstGenerico({
+        larg:larg,
+        x:0,
+        y:alt,
+        alt:0,
+        cor:"laranja",
+        tSurg:400,
+        invul:200
+      },undefined,function (el,o) {
+        if(t<tLava){
+          o.alt+=alt/((tLava/multDific)-o.tSurg);
+          resizeY(el,o.alt);
+          atualizaPosY(el,o.y-o.alt);
+        }
+      });
+
+      criarChave(10,10);
+
+      criarPlat(0,85,false,larg-90);
+      criarPlat(100,180,false,larg-100);
+      criarPlat(0,295,false,larg-110);
+
+      laserColorido(l(6,2,0,0,["azul","laranja"],true,-197));
+
+      funcFrameAntes=function () {
+        ffaPlat();
+      }
+      funcFrameDepois=function () {
+        ffdChave(1);
+        ffdPlat(2);
+      }
+
+      for(let tSurg=50; tSurg<tLava;){
+        const dado=Math.random();
+
+        if(dado<0.45){
+          const dado2bool=Math.random()<0.5;
+          const dado3=Math.random();
+          const xPossivelMax=larg-largLaser;
+
+          gaster({
+            girar180:dado2bool,
+            girar270:true,
+            tSurg:tSurg,
+            tAviso:160,
+            x:xPossivelMax*dado3
+          });
+
+          tSurg+=90;
+        }
+
+        else{
+          const xPossivelMax=larg-tamCaixa;
+          function jogarDado(){
+            let res=Math.random()*larg-tamCaixa/2;
+            if(res<0) res=0;
+            else if(res>xPossivelMax) res=xPossivelMax;
+            return res;
+          }
+
+          let dadoscx=[jogarDado()];
+          do{
+            dadoscx[1]=jogarDado();
+          } while(Math.abs(dadoscx[1]-dadoscx[0])<tamCaixa+12);
+
+          function cx(i){
+            caixa({
+              velY:2,
+              toler:200,
+              cor:"branco",
+              tSurg:tSurg,
+              girar270:false,
+              deslocX: dadoscx[i]
+            });
+          }
+          cx(0);
+          cx(1);
+
+          tSurg+=80;
+        }
+      }
+    }
+  },
+
+  {//r9
+    larg:400,
+    alt:400,
+    fn:function () {
+      setMultDific(1.25);
+      const vel=1,num=24,tCada=90;
+      let vicio=0.5,resAnt;
+
+      for(let i=0; i<num; i++){
+        let res=Math.random()<vicio;
+        if(i==0 || res!=resAnt){
+          vicio=0.5;
+        }
+        if(resAnt) vicio-=0.25;
+        else vicio+=0.25;
+        resAnt=res;
+
+        laserMonocor({
+          toler:120,
+          cor:res? "laranja": "azul",
+          velY:Math.random()<0.5? vel: -vel,
+          girar270: Math.random()<0.5,
+          tSurg:i*tCada
+        });
+      }
+
+      tFim=(num+1)*tCada;
+    }
+  },
+
+  {//r10
+    larg:240,
+    alt:240,
+    fn:function () {
+      setMultDific(0.5);
+      let vel4,angCirc,nFoi3;
+      let nAcabou1=true;
+      const vel2=1*multDific;
+      const tCirc=376/multDific,velCirc=0.5;
+      const tInic=50/multDific;
+
+      caixaGrandeCPrevia({
+        tSurg:0,
+        tRep:1000000,
+        tam:120
+      },function f(tf,el,o) {
+        if(f.passo==0){
+          if(tf>=tInic){
+            f.passo++;
+          }
+        }
+        else{
+          if(f.passo==1){
+            el.y+=(tf<100+tInic? (tf-tInic)/100*2: 2)*multDific;
+            if(el.y>=alt-el.tam/2){
+              f.passo++;
+            }
+          }
+
+          else if(f.passo==2){
+            el.y-=vel2*0.8;
+            el.x-=vel2*0.6;
+            if(el.x<=-el.tam/2){
+              f.passo++;
+            }
+          }
+
+          else if(f.passo==3){
+            el.x-=Math.cos(angCirc)*velCirc*multDific;
+            el.y-=Math.sin(angCirc)*velCirc*multDific;
+            angCirc+=Math.PI/tCirc;
+            if(angCirc>3*Math.PI/2){
+              if(nFoi3){
+                angCirc=Math.PI/2;
+                nFoi3=false;
+              }
+              else{
+                f.passo++;
+              }
+            }
+          }
+
+          else if(f.passo==4){
+            el.y+=vel4*0.8*multDific;
+            el.x-=vel4*0.6*multDific;
+            if(vel4<1.5){
+              vel4+=0.02;
+            }
+            else{
+              vel4=1.5;
+              if(el.x<=o.x){
+                f.passo++;
+              }
+            }
+          }
+
+          else{
+            if(nAcabou1){
+              nAcabou1=false;
+              o.tRep=tf+50;
+              tFim=o.tSurg+2*o.tRep+2*tTrans;
+            }
+          }
+
+          atualizaPosNormal(el);
+        }
+      },function () {
+        angCirc=Math.PI/2;
+        nFoi3=true;
+        vel4=velCirc;
+      });
+      tFim=100000;
+    }
+  },
+
+  {//r11
+    larg:320,
+    alt:320,
+    fn:function () {
+      setMultDific(0.5);
+      function randomCSinal(x){
+        return Math.random()*2*x-x;
+      }
+
+      let accAng=randomCSinal(0.5);
+      let acc=0;
+      const accMax=0.4*multDific;
+      const accSuper=0.8*multDific;
+      let ang=2*Math.PI*Math.random();
+      const velMax=1;
+      const tStart=50;
+      let tObst=tStart+250;
+
+      const tCada=300;
+      let dirs=[true,false];
+      let cores=["laranja","azul"];
+      embaralhar(dirs);
+      embaralhar(cores);
+
+      caixaGrande({
+        tSurg:0,
+        tam:160
+      },function(tf,el,o){
+        if(tf<tStart/multDific) return;
+
+        if(acc<accMax || (t>tObst/multDific && acc<accSuper)){
+          acc+=accMax/100*multDific;
+        }
+        accAng+=function () {
+          return (Math.random()*(2-Math.abs(accAng))-Math.min(accAng+1,1))/10;
+        }();
+        ang+=accAng*Math.PI/20*acc;
+
+        let vel=(1-Math.abs(accAng))*acc;
+        el.x+=vel*Math.cos(ang);
+        el.y+=vel*Math.sin(ang);
+
+        if(el.x<0){
+          el.x=0;
+          ang=-ang+Math.PI;
+        }
+
+        else if(el.x>larg-el.tam){
+          el.x=larg-el.tam;
+          ang=-ang+Math.PI;
+        }
+
+        else if(el.y<0){
+          el.y=0;
+          ang=-ang;
+        }
+
+        else if(el.y>alt-el.tam){
+          el.y=alt-el.tam;
+          ang=-ang;
+        }
+
+        atualizaPosNormal(el);
+      });
+
+      for(let i=0; i<2; i++){
+        laserMonocor({
+          toler:160,
+          cor:cores[i],
+          velY:1.33333,
+          girar270: dirs[i],
+          tSurg:tObst
+        },function (o) {
+          if(o.girar270){
+            if(x>larg/2-roac) o.velY*=-1;
+          }
+          else{
+            if(y>alt/2-roac) o.velY*=-1;
+          }
+        });
+        tObst+=tCada;
+      }
+
+      laserColorido({
+        velX:1,
+        velY:0.73,
+        tSurg:tObst,
+        cores:cores,
+        toler:120,
+        passouX:Math.random()*larg/2
+      },
+      function (o) {
+        const distX=x-(larg/2-roac);
+        const distY=y-(alt/2-roac);
+        if(Math.abs(distX)>Math.abs(distY)){
+          o.girar270=true;
+          if(distX>0) o.velY*=-1;
+        }
+        else{
+          o.girar270=false;
+          if(distY>0) o.velY*=-1;
+        }
+      });
+      tObst+=600;
+
+      tFim=tObst+400;
+    }
+  },
+
+  {//r12
+    larg:240,
+    alt:400,
+    fn:function () {
+      setMultDific(0.2);
+      let espacoAtual=2,espacoAnt=espacoAtual;
+      let dir,dirAnt;
+      const tamCxMaior=48;
+      const espacos=larg/tamCxMaior;
+      const vel=2.4;
+      const tCada=tamCxMaior/vel;
+      let tTotal=0;
+      const toler=240;
+      const fim=20;
+
+      atualizaFF(0.5);
+      divFF.classList.add("visivel");
+      y=40;
+
+      for(let i=0; i<fim; i++){
+        function cx(j){
+          caixa({
+            velY:vel,
+            toler:toler,
+            cor:"branco",
+            tSurg:tTotal,
+            deslocX:tamCxMaior*j-0.5,
+            girar270:false,
+            larg:tamCxMaior+1
+          });
+        }
+
+        for(let j=0; j<espacos; j++){
+          if(j!=espacoAtual && j!=espacoAnt){
+            cx(j);
+          }
+        }
+
+        espacoAnt=espacoAtual;
+        tTotal+=tCada;
+
+        const iMenorQue10=i<10;
+        if(i>0 && !((iMenorQue10 && i%2==0) || (!iMenorQue10 && i%3==0))){
+          if(espacoAtual==0){
+            dir=1;
+          }
+          else if(espacoAtual==espacos-1){
+            dir=-1;
+          }
+          else{
+            dir=sinalAleatorio(1);
+          }
+          espacoAtual+=dir;
+
+          if(tTotal>0 && dir!=dirAnt){
+            obstGenerico({
+              alt:6,
+              larg:tamCxMaior+1,
+              x:tamCxMaior*espacoAtual-0.5,
+              y:-toler-3,
+              cor:"branco",
+              tSurg:tTotal
+            },undefined,function (el,o) {
+              el.y+=vel*multFF*multDific;
+              if(el.y>alt+toler-3){
+                el.classList.remove("visivel");
+              }
+              else atualizaPosY(el,el.y);
+            });
+          }
+
+          dirAnt=dir;
+        }
+      }
+
+      tFim=tTotal+270;
+    }
+  },
+
+  {//r13
+    larg:360,
+    alt:24,
+    fn:function () {
+      setMultDific(0.3);
+      const tamCxMaior=72;
+      const espacos=larg/tamCxMaior;
+      let espacoAtual=2,espacoAnt=espacoAtual;
+      let dir,dirAnt;
+      const vel=1.6;
+      const tCada=tamCxMaior/vel;
+      let tTotal=0;
+      const toler=240;
+      const fim=8;
+
+      atualizaFF(0.75);
+      divFF.classList.add("visivel");
+
+      for(let i=0; i<fim; i++){
+        function cx(j){
+          caixa({
+            velY:vel,
+            toler:toler,
+            cor:"branco",
+            tSurg:tTotal,
+            deslocX:tamCxMaior*j-0.5,
+            girar270:false,
+            larg:tamCxMaior+1,
+            nSome:true
+          });
+        }
+
+        for(let j=0; j<espacos; j++){
+          if(j!=espacoAtual && j!=espacoAnt){
+            cx(j);
+          }
+        }
+
+        espacoAnt=espacoAtual;
+        tTotal+=tCada;
+
+        if(espacoAtual==0){
+          dir=1;
+        }
+        else if(espacoAtual==espacos-1){
+          dir=-1;
+        }
+        else{
+          dir=sinalAleatorio(1);
+        }
+        espacoAtual+=dir;
+
+        if(tTotal>0 && dir!=dirAnt){
+          obstGenerico({
+            alt:6,
+            larg:tamCxMaior+1,
+            x:tamCxMaior*espacoAtual-0.5,
+            y:-toler-3,
+            cor:"branco",
+            tSurg:tTotal
+          },undefined,function (el,o) {
+            el.y+=vel*multFF*multDific;
+            atualizaPosY(el,el.y);
+          });
+        }
+
+        dirAnt=dir;
+      }
+
+      let varia=1;
+      const start=multFF,end=-1.125;
+      const meio=(start+end)/2;
+      let nTrocou=true,comecouAMudar=false;
+      const tTroca=(tTotal+(toler+alt+tamCxMaior)/vel)/multDific;
+
+      funcFrameAntes=function () {
+        if(t>tTroca || comecouAMudar){
+          comecouAMudar=true;
+          if(multFF>end && varia!=0){
+            multFF-=0.002*varia;
+            spanFF.innerHTML=Math.abs(multFF).toFixed(1);
+
+            if(multFF<0 && nTrocou){
+              for(let i=0; i<numObst; i++){
+                if(!obsts[i].classList.contains("visivel")){
+                  obsts[i].classList.add("visivel");
+                  obsts[i].funcApar();
+                }
+              }
+              nTrocou=true;
+              divFF.classList.add("reverso");
+            }
+
+            if(multFF>meio){
+              varia++;
+            }
+            else{
+              varia--;
+            }
+          }
+          else{
+            multFF=end;
+            varia=0;
+            comecouAMudar=false;
+            spanFF.innerHTML=Math.abs(multFF).toFixed(1);
+          }
+        }
+
+        else if(multFF<0 && t<=0){
+          resetRonda();
+        }
+      }
+
+      tFim=10000;
+    }
+  }
+];
+
+
 function keyup(e){
   // Reverte mudanças na velocidade quando solta tecla
   if(e.which<=40&&e.which>=37){ // Se não for setinha, ignorar
@@ -1579,8 +2601,9 @@ function prepararFase(fDepois){
     }
   }
   else{
-    if(cond) ronda=-1;
-    if(cond || ronda==2*fases.length){
+    const cond2=cond || treinando==fasesPadrao.length;
+    if(cond2) ronda=-1;
+    if(cond2 || ronda==2*fases.length){
       alt=240;
       larg=240;
       flagNormal=false;
@@ -1608,7 +2631,7 @@ function prepararFase(fDepois){
     if(ronda==0){
       texto=["Olá, sou a Toriel e vou te ensinar a jogar essa coisa. <em>(Aperte Z para passar)</em>",
       "Para começar vamos aprender a mexer e desviar.",
-      "Use as setinhas ou WASD para desviar da coisa branca que vai aparecer mexendo em sua direção."];
+      "Use as setinhas do teclado para desviar da coisa branca que vai aparecer mexendo em sua direção."];
     }
 
     else if(ronda==1){
@@ -1682,6 +2705,9 @@ function prepararFase(fDepois){
       "Navegue pelo menu com as setinhas, e se você se arrepender de escolher uma opção, volte com X.",
       "E isso é basicamente tudo. Boa sorte!");
     }
+  }
+  else if(treinando!=-1){
+    texto=["<em style='--wait:0;--waitpont:0'>(Aperte Z para iniciar)</em>"];
   }
   else{
     if(ronda==-1){
@@ -2440,8 +3466,7 @@ function inicFase(){ // Chamada quando o jogo inicia
 
 
   if(!tut){
-    dific=1;
-    const meterValue=sliderLeftRem/maxSlide;
+    const meterValue=getValue(0);
     if(meterValue<0.5){
       dificUsuario=0.7+0.6*meterValue;
     }
@@ -2449,995 +3474,21 @@ function inicFase(){ // Chamada quando o jogo inicia
       dificUsuario=0.6+0.8*meterValue;
     }
 
-    fases=[
-      {//r1
-        larg:240,
-        alt:240,
-        fn:function () {
-          function naSorte(x,vely,ft){
-            let cores=["azul","branco","laranja"];
-            const ordem=[[1,false],[-1,true],[-1,false],[1,true]];
-            for(let i=0; i<x; i++){
-              embaralhar(cores);
-              laserColorido(l(6,sinalAleatorio(i%2? 0.66667: 1.33333),ordem[i][0]*vely,ft(i),cores,ordem[i][1],240,undefined,Math.random()*79));
-            }
-          }
-
-          setMultDific(1,1);
-          const spd1=1.1111111111,spd2=0.8888888889;
-
-          naSorte(4,spd1,function (i) {
-            return 144*i;
-          });
-
-          naSorte(4,spd2,function (i) {
-            switch(i){
-              case 0:
-              return 644;
-              case 1:
-              return 696;
-              case 2:
-              return 936;
-              case 3:
-              return 1003;
-            }
-          });
-
-          tFim=1600;
-        }
-      },
-
-      {//r2
-        larg:240,
-        alt:24,
-        fn:function () {
-          setMultDific(1);
-          const cores2=["laranja","azul"];
-          let t=0;
-          const velx1=1.5,vely1=1.5,velx2=0.75,vely2=1.5;
-          const disty=264,distx=280,multRapido=0.5;
-
-          laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,false,360,undefined,Math.random()*80));
-          t+=Math.round(disty/vely1);
-          laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
-            if(x>(larg-roac)/2) o.velY*=-1;
-          });
-          t+=Math.round(distx/vely1);
-
-          laserColorido(l(6,sinalAleatorio(velx2),vely2,t,cores2,false,360,undefined,Math.random()*80));
-          t+=Math.round(disty/vely2*multRapido);
-          laserColorido(l(6,sinalAleatorio(velx2),vely2,t,cores2,false,360,undefined,Math.random()*80));
-          t+=Math.round(disty/vely2*multRapido);
-          laserColorido(l(6,sinalAleatorio(velx2),vely2,t,cores2,false,360,undefined,Math.random()*80));
-          t+=Math.round(disty/vely2);
-
-          let ladoEscolhido;
-          laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
-            if(x>(larg-roac)/2){
-              ladoEscolhido=-1;
-              o.velY*=-1;
-            }
-            else{
-              ladoEscolhido=1;
-            }
-          });
-          t+=Math.round(disty/vely2*multRapido);
-          laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
-            o.velY*=ladoEscolhido;
-          });
-          t+=Math.round(disty/vely2*multRapido);
-          laserColorido(l(6,sinalAleatorio(velx1),vely1,t,cores2,true,180,larg,Math.random()*80),function (o) {
-            o.velY*=ladoEscolhido;
-          });
-          t+=Math.round(distx*2/vely2); // Vezes 2 porque sim
-
-          tFim=t;
-        }
-      },
-
-      {//r3
-        larg:240,
-        alt:240,
-        fn:function () {
-          setMultDific(0.6);
-          const vel=1,num=24,tCada=120;
-
-          for(let i=0; i<num; i++){
-            caixa({
-              velY:vel,
-              toler:240,
-              cor:"branco",
-              tSurg:i*tCada
-            },function(o){
-              if(i%2==1){
-                o.girar270=true;
-                o.deslocX=y-8; // 8 pq eh o tam da caixa menos o do coracao sobre 2
-              }
-              else{
-                o.girar270=false;
-                o.deslocX=x-8;
-              }
-
-              const j=i%4;
-              if(j==1 || j==2){
-                o.velY*=-1;
-              }
-            });
-          }
-
-          for(let i=0; i<7; i++){
-            gaster({
-              tSurg:360*(i+1),
-              tAviso:160,
-              x:(larg-largLaser)/2,
-              girar180:Math.random()<0.5
-            },function (o) {
-              o.girar270=Math.abs(x-(larg-roac)/2)<Math.abs(y-(alt-roac)/2);
-            });
-          }
-
-          tFim=num*tCada;
-          const incr=(1/tFim)*1.5*multDific;
-
-          funcFrameAntes=function () {
-            multFF+=incr;
-            spanFF.innerHTML=multFF.toFixed(1);
-          };
-
-          divFF.classList.add("visivel");
-        }
-      },
-
-      {//r4
-        larg:76,
-        alt:110,
-        fn:function () {
-          setMultDific(1.25);
-          const vel=6.66667,num=10;
-          const tCada=tamCaixa/vel*4;
-          const cores=["azul","laranja"];
-          let ultimo=1;
-
-          atualizaFF(0.25);
-
-          for(let i=0; i<num; i++){
-            caixa({
-              velY:vel,
-              toler:240,
-              cor:function () {
-                let ind;
-                if(ultimo==0){
-                  ind=1;
-                }
-                else{
-                  ind=Math.random()<0.5? 0: 1;
-                }
-                ultimo=ind;
-                return cores[ind];
-              }(),
-              tSurg:25+i*tCada,
-              deslocX:(larg-tamCaixa)/2
-            });
-          }
-
-          laserColorido(l(6,2,0,0,["branco","azul"],true,-21));
-          laserColorido(l(6,-2,0,0,["branco","azul"],true,-55));
-
-          tFim=tCada*num+(280+alt)/vel;
-          divFF.classList.add("visivel");
-        }
-      },
-
-      {//r5
-        larg:240,
-        alt:240,
-        fn:function () {
-          setMultDific(1);
-          atualizaFF(64);
-          divFF.classList.add("visivel");
-
-          criarPlat(0,largPlat,false);
-          criarPlat(2*largPlat,0,true);
-          criarPlat(2.5*largPlat,0*largPlat,true,2.25*largPlat);
-          criarPlat(2*largPlat,5*largPlat,false);
-          criarPlat(2*largPlat,4*largPlat,false);
-          criarPlat(5*largPlat,4.5*largPlat,false);
-          criarPlat(3.75*largPlat,2*largPlat,false,2.25*largPlat);
-          criarPlat(1.25*largPlat,5*largPlat,true);
-          criarPlat(4*largPlat,3*largPlat,true);
-          criarPlat(0.25*largPlat,2.5*largPlat,true,2*largPlat);
-          criarPlat(3.25*largPlat,1*largPlat,false,1.5*largPlat);
-          criarPlat(4*largPlat,0,true);
-          criarPlat(2*largPlat,1*largPlat,false,0.5*largPlat);
-
-          funcFrameAntes=ffaPlat;
-          funcFrameDepois=ffdPlat;
-
-          let tInic=360;
-          const intvMedio=110,intvCurto=85,av1=160,av2=160,av3=440,av4=600;
-
-          function gasterEsperto(girar180,girar270,tSurg,tAviso){
-            gaster({
-              girar180:girar180,
-              girar270:girar270,
-              tSurg:tSurg,
-              tAviso:tAviso
-            },function (o) {
-              o.x=(girar270? y: x)-(largLaser-2*roac)/2;
-            });
-          }
-
-          gasterEsperto(false,false,100,av1);
-
-          gasterEsperto(false,false,tInic,av1);
-          tInic+=intvCurto;
-          gasterEsperto(false,true,tInic,av1);
-          tInic+=intvCurto;
-          gasterEsperto(true,false,tInic,av1);
-          tInic+=intvCurto;
-          gasterEsperto(true,true,tInic,av1);
-          tInic+=intvCurto+av1;
-
-          gasterEsperto(false,false,tInic,av2);
-          gasterEsperto(false,true,tInic,av2);
-          tInic+=intvMedio;
-          gasterEsperto(true,false,tInic,av2);
-          gasterEsperto(true,true,tInic,av2);
-          tInic+=intvMedio;
-          gasterEsperto(false,false,tInic,av2);
-          gasterEsperto(false,true,tInic,av2);
-          tInic+=intvMedio+av2;
-
-
-          const linhas=larg/largLaser;
-
-          function gasterSet(girar180,girar270,toler,tAviso){ // Melhorar quando der vontade
-            let linhaEsc=Math.floor(Math.random()*(linhas-1-toler));
-            if(linhaEsc==linhas-2-toler) linhaEsc++;
-
-            for(let i=0; i<linhas; i++){
-              if(i==linhaEsc){
-                if(linhaEsc!=0){
-                  i+=toler+1;
-                }
-                else{
-                  i+=toler;
-                }
-              }
-              else{
-                gaster({
-                  girar180:girar180,
-                  girar270:girar270,
-                  tSurg:tInic,
-                  tAviso:tAviso,
-                  x:i*largLaser
-                });
-              }
-            }
-          }
-
-          gasterSet(false,true,1,av3);
-          gasterSet(false,false,1,av3);
-          tInic+=av3+50;
-
-          gasterSet(true,false,0,av4);
-          gasterSet(true,true,0,av4);
-          tInic+=av4+50;
-
-          tFim=tInic*multFF+100;
-        }
-      },
-
-      {//r6
-        larg:280,
-        alt:260,
-        fn:function () {
-          setMultDific(1);
-          atualizaFF(64);
-          divFF.classList.add("visivel");
-          x=2*largPlat+4;
-
-          criarPlat(2*largPlat,1.5*largPlat,false);
-          criarPlat(2*largPlat,1.5*largPlat,true,0.75*largPlat);
-          criarPlat(1.5*largPlat,4.5*largPlat,false);
-          criarPlat(5*largPlat,5*largPlat,false);
-          criarPlat(6*largPlat,4.25*largPlat,true,largPlat*3/4);
-          criarPlat(0,5.5*largPlat,false);
-          criarPlat(3.25*largPlat,5.5*largPlat,false,1.75*largPlat);
-          criarPlat(6*largPlat-3,3.5*largPlat,false,largPlat+3);
-          criarPlat(5.5*largPlat-3,1*largPlat,true);
-          criarPlat(4.5*largPlat-3,1*largPlat,false);
-          criarPlat(3*largPlat-3,3*largPlat,true,1.25*largPlat);
-
-          criarChave(5.5*largPlat-6,2*largPlat-4);
-          criarChave(larg-32,4.25*largPlat);
-
-          funcFrameAntes=function () {
-            multFF+=0.032*multDific;
-            spanFF.innerHTML=multFF.toFixed(0);
-            ffaPlat();
-          };
-          funcFrameDepois=function () {
-            ffdPlat();
-            ffdChave(numPlats);
-          };
-
-          for(let i=0; i<61; i++){ // MELHORAR ESSA ZORRA
-            const restoIpor4=i%4;
-            gaster({
-              girar180:restoIpor4==1 || restoIpor4==2,
-              girar270:restoIpor4==1 || restoIpor4==3,
-              tSurg:200+i*240,
-              tAviso:160,
-            },function (o) {
-              o.x=(o.girar270? y: x)-(largLaser-2*roac)/2;
-            });
-          }
-
-          tFim=6000*160;
-        }
-      },
-
-      {//r7
-        larg:80,
-        alt:80,
-        fn:function () {
-          setMultDific(1);
-          divFF.classList.add("visivel");
-          spanFF.innerHTML="1.0";
-          multFF=1;
-          const intv=320,pares=3;
-          const numGasters=pares*2;
-          const multPt2=4;
-          const areas=larg/largLaser;
-
-          let gastersAnts=[];
-          let areasPerigosas=[];
-          for(let i=0; i<areas; i++){
-            areasPerigosas[i]=[];
-          }
-
-          do{
-            for(let i=0; i<areas; i++){
-              for(let j=0; j<areas; j++){
-                areasPerigosas[i][j]=0;
-              }
-            }
-
-            for(let i=0; i<pares; i++){
-              function set(zeroou1){
-                const atual=2*i+zeroou1;
-                let parteQInteressa={};
-
-                function setRandom(){
-                  parteQInteressa.girar180=p=Math.random()>0.5;
-                  parteQInteressa.areaX=Math.floor(Math.random()*areas);
-                  if(atual>=2){
-                    if(parteQInteressa.girar180==gastersAnts[atual-2].girar180
-                    && parteQInteressa.areaX==gastersAnts[atual-2].areaX){
-                      parteQInteressa.girar180=!parteQInteressa.girar180;
-                    }
-                  }
-                }
-
-                function addLinha(j){
-                  for(let i=0; i<areas; i++){
-                    areasPerigosas[j][i]++;
-                  }
-                }
-                function addCol(j){
-                  for(let i=0; i<areas; i++){
-                    areasPerigosas[i][j]++;
-                  }
-                }
-
-                setRandom();
-                if(zeroou1==1){
-                  addLinha(parteQInteressa.areaX);
-                }
-                else{
-                  addCol(parteQInteressa.areaX);
-                }
-                gastersAnts[atual]=parteQInteressa;
-              }
-
-              set(0);
-              set(1);
-            }
-          } while(function(){
-            for(let i=0; i<areas; i++){
-              for(let j=0; j<areas; j++){
-                if(areasPerigosas[i][j]==0) return true;
-              }
-            }
-            return false;
-          }());
-
-          for(let i=0; i<numGasters; i++){
-            gaster({
-              girar180:gastersAnts[i].girar180,
-              girar270:i%2==1,
-              x:gastersAnts[i].areaX*largLaser,
-              tAviso:intv,
-              tSurg:Math.floor(i/2)*intv
-            },function (o) {
-              if(multFF>1){
-                o.tAtk=Math.round(50/multPt2);
-                o.dano=9/o.tAtk;
-              }
-            });
-          }
-
-
-          const tRev=(pares*intv+50)/multDific;
-          let varia=0;
-          let nZerou1=true,nZerou2=true,nIniciou2=true;
-
-          function resetObsts(){
-            for(let i=0; i<numObst; i++){
-              obsts[i].apareceu=false;
-            }
-          }
-
-          funcFrameAntes=function () {
-            if(t>tRev && nIniciou2){
-              if(multFF>0) varia++;
-              else{
-                varia--;
-                if(nZerou1){
-                  divFF.classList.add("reverso");
-                  resetObsts();
-                  nZerou1=false;
-                }
-              }
-              multFF-=0.0004*varia;
-              spanFF.innerHTML=Math.abs(multFF).toFixed(1);
-            }
-            else if(!nZerou1 && (t<=0 || !nIniciou2) && multFF<multPt2){
-              if(nIniciou2){
-                varia=0;
-                nIniciou2=false;
-                tFim=tRev+50; // tFim de verdade
-              }
-              if(multFF<(-1+multPt2)/2){
-                varia++;
-                if(nZerou2 && multFF>0){
-                  divFF.classList.remove("reverso");
-                  resetObsts();
-                  nZerou2=false;
-                }
-              }
-              else{
-                varia--;
-              }
-              if(varia==0){
-                nZerou1=true;
-              }
-              else{
-                multFF+=0.00016*varia;
-                spanFF.innerHTML=Math.abs(multFF).toFixed(1);
-              }
-            }
-          }
-          tFim=10000;
-        }
-      },
-
-      {//r8
-        larg:400,
-        alt:400,
-        fn:function () {
-          setMultDific(0.5);
-          y=alt-2*roac-10;
-          x=10;
-
-          tFim=2000;
-          const tLava=2000;
-
-          obstGenerico({
-            larg:larg,
-            x:0,
-            y:alt,
-            alt:0,
-            cor:"laranja",
-            tSurg:400,
-            invul:200
-          },undefined,function (el,o) {
-            if(t<tLava){
-              o.alt+=alt/((tLava/multDific)-o.tSurg);
-              resizeY(el,o.alt);
-              atualizaPosY(el,o.y-o.alt);
-            }
-          });
-
-          criarChave(10,10);
-
-          criarPlat(0,85,false,larg-90);
-          criarPlat(100,180,false,larg-100);
-          criarPlat(0,295,false,larg-110);
-
-          laserColorido(l(6,2,0,0,["azul","laranja"],true,-197));
-
-          funcFrameAntes=function () {
-            ffaPlat();
-          }
-          funcFrameDepois=function () {
-            ffdChave(1);
-            ffdPlat(2);
-          }
-
-          for(let tSurg=50; tSurg<tLava;){
-            const dado=Math.random();
-
-            if(dado<0.45){
-              const dado2bool=Math.random()<0.5;
-              const dado3=Math.random();
-              const xPossivelMax=larg-largLaser;
-
-              gaster({
-                girar180:dado2bool,
-                girar270:true,
-                tSurg:tSurg,
-                tAviso:160,
-                x:xPossivelMax*dado3
-              });
-
-              tSurg+=90;
-            }
-
-            else{
-              const xPossivelMax=larg-tamCaixa;
-              function jogarDado(){
-                let res=Math.random()*larg-tamCaixa/2;
-                if(res<0) res=0;
-                else if(res>xPossivelMax) res=xPossivelMax;
-                return res;
-              }
-
-              let dadoscx=[jogarDado()];
-              do{
-                dadoscx[1]=jogarDado();
-              } while(Math.abs(dadoscx[1]-dadoscx[0])<tamCaixa+12);
-
-              function cx(i){
-                caixa({
-                  velY:2,
-                  toler:200,
-                  cor:"branco",
-                  tSurg:tSurg,
-                  girar270:false,
-                  deslocX: dadoscx[i]
-                });
-              }
-              cx(0);
-              cx(1);
-
-              tSurg+=80;
-            }
-          }
-        }
-      },
-
-      {//r9
-        larg:400,
-        alt:400,
-        fn:function () {
-          setMultDific(1.25);
-          const vel=1,num=24,tCada=90;
-          let vicio=0.5,resAnt;
-
-          for(let i=0; i<num; i++){
-            let res=Math.random()<vicio;
-            if(i==0 || res!=resAnt){
-              vicio=0.5;
-            }
-            if(resAnt) vicio-=0.25;
-            else vicio+=0.25;
-            resAnt=res;
-
-            laserMonocor({
-              toler:120,
-              cor:res? "laranja": "azul",
-              velY:Math.random()<0.5? vel: -vel,
-              girar270: Math.random()<0.5,
-              tSurg:i*tCada
-            });
-          }
-
-          tFim=(num+1)*tCada;
-        }
-      },
-
-      {//r10
-        larg:240,
-        alt:240,
-        fn:function () {
-          setMultDific(0.5);
-          let vel4,angCirc,nFoi3;
-          let nAcabou1=true;
-          const vel2=1*multDific;
-          const tCirc=376/multDific,velCirc=0.5;
-          const tInic=50/multDific;
-
-          caixaGrandeCPrevia({
-            tSurg:0,
-            tRep:1000000,
-            tam:120
-          },function f(tf,el,o) {
-            if(f.passo==0){
-              if(tf>=tInic){
-                f.passo++;
-              }
-            }
-            else{
-              if(f.passo==1){
-                el.y+=(tf<100+tInic? (tf-tInic)/100*2: 2)*multDific;
-                if(el.y>=alt-el.tam/2){
-                  f.passo++;
-                }
-              }
-
-              else if(f.passo==2){
-                el.y-=vel2*0.8;
-                el.x-=vel2*0.6;
-                if(el.x<=-el.tam/2){
-                  f.passo++;
-                }
-              }
-
-              else if(f.passo==3){
-                el.x-=Math.cos(angCirc)*velCirc*multDific;
-                el.y-=Math.sin(angCirc)*velCirc*multDific;
-                angCirc+=Math.PI/tCirc;
-                if(angCirc>3*Math.PI/2){
-                  if(nFoi3){
-                    angCirc=Math.PI/2;
-                    nFoi3=false;
-                  }
-                  else{
-                    f.passo++;
-                  }
-                }
-              }
-
-              else if(f.passo==4){
-                el.y+=vel4*0.8*multDific;
-                el.x-=vel4*0.6*multDific;
-                if(vel4<1.5){
-                  vel4+=0.02;
-                }
-                else{
-                  vel4=1.5;
-                  if(el.x<=o.x){
-                    f.passo++;
-                  }
-                }
-              }
-
-              else{
-                if(nAcabou1){
-                  nAcabou1=false;
-                  o.tRep=tf+50;
-                  tFim=o.tSurg+2*o.tRep+2*tTrans;
-                }
-              }
-
-              atualizaPosNormal(el);
-            }
-          },function () {
-            angCirc=Math.PI/2;
-            nFoi3=true;
-            vel4=velCirc;
-          });
-          tFim=100000;
-        }
-      },
-
-      {//r11
-        larg:320,
-        alt:320,
-        fn:function () {
-          setMultDific(0.5);
-          function randomCSinal(x){
-            return Math.random()*2*x-x;
-          }
-
-          let accAng=randomCSinal(0.5);
-          let acc=0;
-          const accMax=0.4*multDific;
-          const accSuper=0.8*multDific;
-          let ang=2*Math.PI*Math.random();
-          const velMax=1;
-          const tStart=50;
-          let tObst=tStart+250;
-
-          const tCada=300;
-          let dirs=[true,false];
-          let cores=["laranja","azul"];
-          embaralhar(dirs);
-          embaralhar(cores);
-
-          caixaGrande({
-            tSurg:0,
-            tam:160
-          },function(tf,el,o){
-            if(tf<tStart/multDific) return;
-
-            if(acc<accMax || (t>tObst/multDific && acc<accSuper)){
-              acc+=accMax/100*multDific;
-            }
-            accAng+=function () {
-              return (Math.random()*(2-Math.abs(accAng))-Math.min(accAng+1,1))/10;
-            }();
-            ang+=accAng*Math.PI/20*acc;
-
-            let vel=(1-Math.abs(accAng))*acc;
-            el.x+=vel*Math.cos(ang);
-            el.y+=vel*Math.sin(ang);
-
-            if(el.x<0){
-              el.x=0;
-              ang=-ang+Math.PI;
-            }
-
-            else if(el.x>larg-el.tam){
-              el.x=larg-el.tam;
-              ang=-ang+Math.PI;
-            }
-
-            else if(el.y<0){
-              el.y=0;
-              ang=-ang;
-            }
-
-            else if(el.y>alt-el.tam){
-              el.y=alt-el.tam;
-              ang=-ang;
-            }
-
-            atualizaPosNormal(el);
-          });
-
-          for(let i=0; i<2; i++){
-            laserMonocor({
-              toler:160,
-              cor:cores[i],
-              velY:1.33333,
-              girar270: dirs[i],
-              tSurg:tObst
-            },function (o) {
-              if(o.girar270){
-                if(x>larg/2-roac) o.velY*=-1;
-              }
-              else{
-                if(y>alt/2-roac) o.velY*=-1;
-              }
-            });
-            tObst+=tCada;
-          }
-
-          laserColorido({
-            velX:1,
-            velY:0.73,
-            tSurg:tObst,
-            cores:cores,
-            toler:120,
-            passouX:Math.random()*larg/2
-          },
-          function (o) {
-            const distX=x-(larg/2-roac);
-            const distY=y-(alt/2-roac);
-            if(Math.abs(distX)>Math.abs(distY)){
-              o.girar270=true;
-              if(distX>0) o.velY*=-1;
-            }
-            else{
-              o.girar270=false;
-              if(distY>0) o.velY*=-1;
-            }
-          });
-          tObst+=600;
-
-          tFim=tObst+400;
-        }
-      },
-
-      {//r12
-        larg:240,
-        alt:400,
-        fn:function () {
-          setMultDific(0.2);
-          let espacoAtual=2,espacoAnt=espacoAtual;
-          let dir,dirAnt;
-          const tamCxMaior=48;
-          const espacos=larg/tamCxMaior;
-          const vel=2.4;
-          const tCada=tamCxMaior/vel;
-          let tTotal=0;
-          const toler=240;
-          const fim=20;
-
-          atualizaFF(0.5);
-          divFF.classList.add("visivel");
-          y=40;
-
-          for(let i=0; i<fim; i++){
-            function cx(j){
-              caixa({
-                velY:vel,
-                toler:toler,
-                cor:"branco",
-                tSurg:tTotal,
-                deslocX:tamCxMaior*j-0.5,
-                girar270:false,
-                larg:tamCxMaior+1
-              });
-            }
-
-            for(let j=0; j<espacos; j++){
-              if(j!=espacoAtual && j!=espacoAnt){
-                cx(j);
-              }
-            }
-
-            espacoAnt=espacoAtual;
-            tTotal+=tCada;
-
-            const iMenorQue10=i<10;
-            if(i>0 && !((iMenorQue10 && i%2==0) || (!iMenorQue10 && i%3==0))){
-              if(espacoAtual==0){
-                dir=1;
-              }
-              else if(espacoAtual==espacos-1){
-                dir=-1;
-              }
-              else{
-                dir=sinalAleatorio(1);
-              }
-              espacoAtual+=dir;
-
-              if(tTotal>0 && dir!=dirAnt){
-                obstGenerico({
-                  alt:6,
-                  larg:tamCxMaior+1,
-                  x:tamCxMaior*espacoAtual-0.5,
-                  y:-toler-3,
-                  cor:"branco",
-                  tSurg:tTotal
-                },undefined,function (el,o) {
-                  el.y+=vel*multFF*multDific;
-                  if(el.y>alt+toler-3){
-                    el.classList.remove("visivel");
-                  }
-                  else atualizaPosY(el,el.y);
-                });
-              }
-
-              dirAnt=dir;
-            }
-          }
-
-          tFim=tTotal+270;
-        }
-      },
-
-      {//r13
-        larg:360,
-        alt:24,
-        fn:function () {
-          setMultDific(0.3);
-          const tamCxMaior=72;
-          const espacos=larg/tamCxMaior;
-          let espacoAtual=2,espacoAnt=espacoAtual;
-          let dir,dirAnt;
-          const vel=1.6;
-          const tCada=tamCxMaior/vel;
-          let tTotal=0;
-          const toler=240;
-          const fim=8;
-
-          atualizaFF(0.75);
-          divFF.classList.add("visivel");
-
-          for(let i=0; i<fim; i++){
-            function cx(j){
-              caixa({
-                velY:vel,
-                toler:toler,
-                cor:"branco",
-                tSurg:tTotal,
-                deslocX:tamCxMaior*j-0.5,
-                girar270:false,
-                larg:tamCxMaior+1,
-                nSome:true
-              });
-            }
-
-            for(let j=0; j<espacos; j++){
-              if(j!=espacoAtual && j!=espacoAnt){
-                cx(j);
-              }
-            }
-
-            espacoAnt=espacoAtual;
-            tTotal+=tCada;
-
-            if(espacoAtual==0){
-              dir=1;
-            }
-            else if(espacoAtual==espacos-1){
-              dir=-1;
-            }
-            else{
-              dir=sinalAleatorio(1);
-            }
-            espacoAtual+=dir;
-
-            if(tTotal>0 && dir!=dirAnt){
-              obstGenerico({
-                alt:6,
-                larg:tamCxMaior+1,
-                x:tamCxMaior*espacoAtual-0.5,
-                y:-toler-3,
-                cor:"branco",
-                tSurg:tTotal
-              },undefined,function (el,o) {
-                el.y+=vel*multFF*multDific;
-                atualizaPosY(el,el.y);
-              });
-            }
-
-            dirAnt=dir;
-          }
-
-          let varia=1;
-          const start=multFF,end=-1.125;
-          const meio=(start+end)/2;
-          let nTrocou=true,comecouAMudar=false;
-          const tTroca=(tTotal+(toler+alt+tamCxMaior)/vel)/multDific;
-
-          funcFrameAntes=function () {
-            if(t>tTroca || comecouAMudar){
-              comecouAMudar=true;
-              if(multFF>end && varia!=0){
-                multFF-=0.002*varia;
-                spanFF.innerHTML=Math.abs(multFF).toFixed(1);
-
-                if(multFF<0 && nTrocou){
-                  for(let i=0; i<numObst; i++){
-                    if(!obsts[i].classList.contains("visivel")){
-                      obsts[i].classList.add("visivel");
-                      obsts[i].funcApar();
-                    }
-                  }
-                  nTrocou=true;
-                  divFF.classList.add("reverso");
-                }
-
-                if(multFF>meio){
-                  varia++;
-                }
-                else{
-                  varia--;
-                }
-              }
-              else{
-                multFF=end;
-                varia=0;
-                comecouAMudar=false;
-                spanFF.innerHTML=Math.abs(multFF).toFixed(1);
-              }
-            }
-
-            else if(multFF<0 && t<=0){
-              resetRonda();
-            }
-          }
-
-          tFim=10000;
-        }
+    if(treinando!=-1){
+      dific=1+getValue(1)*0.4;
+      if(treinando!=fasesPadrao.length){
+        fases=[fasesPadrao[treinando]];
       }
-    ];
+      else{
+        fases=[];
+      }
+      divAtual.classList.remove("visivel");
+      coracaoErrante.classList.add("pseudoOculto");
+    }
+    else{
+      dific=1;
+      fases=fasesPadrao;
+    }
 
     if(incrDificGradual==undefined){
       incrDificGradual=incrDificSubito/(fases.length+1);
@@ -3482,6 +3533,7 @@ function inicFase(){ // Chamada quando o jogo inicia
 
 
   else{
+    hpMaxOpon=95;
     padrao();
 
     function noHitPula(nova){
@@ -3547,6 +3599,9 @@ function inicFase(){ // Chamada quando o jogo inicia
         alt:240,
         fn:function () {
           const gap=40;
+          const tSurgLava=500;
+          tFim=1000;
+          const aumento=gap/(tFim-tSurgLava);
 
           criarChave((larg-largChave)/2,(gap-largChave)/2);
           obstGenerico({
@@ -3555,9 +3610,22 @@ function inicFase(){ // Chamada quando o jogo inicia
             x:0,
             y:gap,
             tSurg:0,
-            cor:"laranja",
-            larg:larg
+            cor:"laranja"
           },undefined,function(){});
+
+          obstGenerico({
+            larg:larg,
+            alt:0,
+            x:0,
+            y:alt,
+            tSurg:500,
+            cor:"branco"
+          },undefined,function (el,o) {
+            el.y-=aumento;
+            o.alt+=aumento;
+            atualizaPosY(el);
+            resizeY(el,o.alt);
+          });
 
           funcFrameAntes=ffaPlat;
           funcFrameDepois=function () {
@@ -3570,7 +3638,6 @@ function inicFase(){ // Chamada quando o jogo inicia
           else{
             y=alt-gap/2-roac;
           }
-          tFim=100000;
           if(!facil){
             noHitPula(5);
           }
@@ -3685,7 +3752,6 @@ function inicFase(){ // Chamada quando o jogo inicia
       faseVazia
     ];
 
-    hpMaxOpon=95;
     setImgOpon("Toriel.png");
     resetMeiaBoca();
     sumirDivEPreparar();
@@ -3993,13 +4059,10 @@ function abreModal(num){
 }
 
 btnsMenu[0].addEventListener("click",function () {
-  tut=false;
   localStorage.removeItem("save");
-  continuando=false;
   inicFase();
 });
 btnsMenu[1].addEventListener("click",function () {
-  tut=false;
   continuando=true;
   inicFase();
 });
@@ -4013,3 +4076,26 @@ btnsMenu[4].addEventListener("click",function () {
 });
 
 btnClose.addEventListener("click",exit);
+
+
+// Treinamento
+
+const olFases=document.querySelector("#fases");
+
+function addLi(html,num){
+  const li=document.createElement("li");
+  const btn=document.createElement("button");
+  btn.innerHTML=html;
+  btn.addEventListener("click",function () {
+    treinando=num;
+    inicFase();
+  });
+  li.appendChild(btn);
+  olFases.appendChild(li);
+  return li;
+}
+
+for(let i=0; i<fasesPadrao.length; i++){
+  addLi(String(i+1),i);
+}
+addLi("Final",fasesPadrao.length).className="final";
