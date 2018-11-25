@@ -427,7 +427,8 @@ function exit(){
     for(let i=0; i<tudo.length; i++){
       const el=tudo[i];
       const attrsInic=el.attrsInic;
-      const attrsAtuais=el.attributes;
+      const attrsAtuais=Array.prototype.slice.call(el.attributes);
+      // Stack Overflow. Não mexer, e evitar olhar para essa linha por tempo prolongado.
       for(let j=0; j<attrsAtuais.length; j++){
         el.removeAttribute(attrsAtuais[j].name);
       }
@@ -471,7 +472,7 @@ function resetRonda(){
 
   if(naoEPrimeira){
     removerVetorEl(obsts);
-    if(!tut && treinando!=-1){
+    if(notTut && treinando!=-1){
       exit();
       return;
     }
@@ -482,8 +483,8 @@ function resetRonda(){
   }
 
   if(treinando==-1 && (notTut || ronda>7)){
-    if(fase>=fases.length){
-      if(notTut){
+    if(notTut){
+      if(fase>=fases.length){
         fase=0;
         embaralhar(fases);
         acelerando=true;
@@ -498,7 +499,7 @@ function resetRonda(){
           dific+=incrDificGradual;
         }
 
-        if(hpOpon>0){
+        if(hpOpon>0 && ronda<2*fasesPadrao.length+1){
           let strItens="[";
           for(let i=0;;){
             strItens+="\""+itens[i].nome+"\"";
@@ -2176,6 +2177,7 @@ const fasesPadrao=[
     alt:240,
     fn:function () {
       setMultDific(0.5);
+      y=24;
       let vel4,angCirc,nFoi3;
       let nAcabou1=true;
       const vel2=1*multDific;
@@ -2563,21 +2565,42 @@ const fasesPadrao=[
 ];
 
 
-function keyup(e){
+// Check
+
+const checkMsgs=document.querySelectorAll("#checkMsg>div");
+let lastCheck;
+let bateria;
+const spanBateria=document.querySelector("#bateria");
+const decrBateria=100/(2*fasesPadrao.length+1);
+
+function showCheck(i){
+  if(lastCheck!=checkMsgs[i]){
+    if(lastCheck!=undefined){
+      lastCheck.classList.remove("visivel");
+    }
+    lastCheck=checkMsgs[i];
+    lastCheck.classList.add("visivel");
+  }
+}
+
+
+addEventListener("keyup",function (e) {
   // Reverte mudanças na velocidade quando solta tecla
-  if(e.which<=40&&e.which>=37){ // Se não for setinha, ignorar
+
+  if(e.which<=40&&e.which>=37&&tamPremidas>0){ // Se não for setinha, ignorar
     tamPremidas--;
     for(let i=0; i<=tamPremidas; i++){
       if(e.which==premidas[i]){
-        let ret=premidas[tamPremidas];
-        premidas[i]=ret;
-        premidas.pop();
+        premidas.splice(i,1);
         break;
       }
     }
     mudaVel(e.which,-1);
   }
-  else if(e.which==27){
+});
+
+function keyup(e){
+  if(e.which==27){
     exit();
   }
 }
@@ -2720,6 +2743,12 @@ function prepararFase(fDepois){
     else if(ronda==2*fases.length){
       texto=["Desisto."];
     }
+    else if(ronda==6){
+      texto=["Você já me viu mudar a velocidade da passagem do tempo. Mas e a direção dele?"];
+    }
+    else if(ronda==9){
+      texto=["Primeiro observe com calma, porque você vai ter que fazer depois."];
+    }
     else{
       texto=[];
     }
@@ -2737,6 +2766,19 @@ function sumirDivEPreparar(fDepois){
   prepararFase(fDepois);
 }
 
+
+addEventListener("keydown",function (e) {
+  // Ignorar evento em teclas já abaixadas
+
+  if(e.which<=40&&e.which>=37){
+    for(let i=0; i<tamPremidas; i++){
+      if(e.which==premidas[i]) return;
+    }
+    premidas.push(e.which);
+    tamPremidas++;
+    mudaVel(e.which,1);
+  }
+});
 
 function keydown(e){
   // Fim da luta
@@ -2777,18 +2819,6 @@ function keydown(e){
         imgOpon.style.animation="";
       },tt);
     }
-  }
-
-
-  // Ignorar evento em teclas já abaixadas
-
-  if(e.which<=40&&e.which>=37){
-    for(let i=0; i<tamPremidas; i++){
-      if(e.which==premidas[i]) return;
-    }
-    premidas.push(e.which);
-    tamPremidas++;
-    mudaVel(e.which,1);
   }
 
 
@@ -2952,6 +2982,9 @@ function keydown(e){
           emJogo=-3;
           if(idxEla==0){
             mudarDivId("checkMsg");
+            if(!tut){
+              spanBateria.innerHTML=(100-ronda*decrBateria).toFixed(0);
+            }
           }
           moverCoracao(botoes,1);
         }
@@ -3466,6 +3499,8 @@ function inicFase(){ // Chamada quando o jogo inicia
 
 
   if(!tut){
+    showCheck(0);
+
     const meterValue=getValue(0);
     if(meterValue<0.5){
       dificUsuario=0.7+0.6*meterValue;
@@ -3533,6 +3568,7 @@ function inicFase(){ // Chamada quando o jogo inicia
 
 
   else{
+    showCheck(1);
     hpMaxOpon=95;
     padrao();
 
