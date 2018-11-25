@@ -456,7 +456,7 @@ body{
 .tx>:last-child{
   margin-bottom: 0;
 }
-.tx li,.tx>p{
+.tx li,.tx p{
   margin-bottom: 0.5em;
 }
 .tx ul{
