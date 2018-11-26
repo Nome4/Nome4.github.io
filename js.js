@@ -427,10 +427,12 @@ function exit(){
     for(let i=0; i<tudo.length; i++){
       const el=tudo[i];
       const attrsInic=el.attrsInic;
-      const attrsAtuais=Array.prototype.slice.call(el.attributes);
-      // Stack Overflow. Não mexer, e evitar olhar para essa linha por tempo prolongado.
+      const attrsAtuais=[];
+      for(let j=0; j<el.attributes.length; j++){
+        attrsAtuais[j]=el.attributes[j].name;
+      }
       for(let j=0; j<attrsAtuais.length; j++){
-        el.removeAttribute(attrsAtuais[j].name);
+        el.removeAttribute(attrsAtuais[j]);
       }
       for(let j=0; j<attrsInic.length; j++){
         const attr=attrsInic[j];
