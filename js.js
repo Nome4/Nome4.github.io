@@ -152,7 +152,7 @@ function load(){
 
     tooltipSave.innerHTML="\
       <div><dt>Rodada</dt><dd>"+(loaded.ronda+1)+"</dd></div>\
-      <div><dt>Seu HP</dt><dd>"+loaded.hp+"</dd></div>\
+      <div><dt>Seu HP</dt><dd>"+loaded.hp.toFixed(0)+"</dd></div>\
       <div><dt>HP do oponente</dt><dd>"+loaded.hpOpon.toFixed(0)+"</dd></div>\
       <div><dt>Itens</dt><dd>"+strItens+"</dd></div>\
     ";
@@ -482,6 +482,7 @@ function resetRonda(){
   else{
     naoEPrimeira=true;
     nepAntigo=false;
+    emJogo=-1;
   }
 
   if(treinando==-1 && (notTut || ronda>7)){
@@ -493,7 +494,6 @@ function resetRonda(){
         dific+=incrDificSubito-incrDificGradual;
       }
     }
-    emJogo=-1;
 
     if(nepAntigo){
       if(notTut){
@@ -532,6 +532,7 @@ function resetRonda(){
       timeoutApagavel(function () {
         div.classList.remove("hasTransition");
         mudarDivId("ane");
+        emJogo=-1;
       },500);
     }
   }
@@ -4111,6 +4112,9 @@ btnsMenu[2].addEventListener("click",function () {
 
 btnsMenu[4].addEventListener("click",function () {
   abreModal(0);
+});
+btnsMenu[5].addEventListener("click",function () {
+  abreModal(1);
 });
 
 btnClose.addEventListener("click",exit);
