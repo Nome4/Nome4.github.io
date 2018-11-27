@@ -748,6 +748,10 @@ button{
 
 /* Texto modal */
 
+.largPadrao{
+  width:500rem;
+}
+
 .modal .fechar+*{
   padding-top:0;
   margin-top:0;
@@ -956,4 +960,20 @@ button{
   align-items: center;
   justify-content: center;
   font-size: calc(var(--largLi) / 2.5);
+}
+
+
+/* Controles */
+
+#controles dt,#controles dd{
+  display: inline;
+}
+#controles dl>*{
+  margin-bottom:12rem;
+}
+#controles dt{
+  font-weight: bold;
+}
+#controles dt::after{
+  content: ": ";
 }
