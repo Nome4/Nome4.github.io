@@ -1,11 +1,28 @@
-// Fazer isso para a propriedade x e y das imagens funcionar
+"use strict"; // Ajuda a debugar o código
 
+/*console.log("Analise o código fonte para achar a palavra secreta que te faz ganhar!");
+{
+  const str="qfojt";
+  let res="";
+  for(let i=0; i<5; i++){
+    res+=String.fromCharCode(str[i].charCodeAt()-1);
+  }
+  Object.defineProperty(window,res,{
+    get:function () {
+      alert("vc ganho");
+    }
+  });
+}*/
+
+// Fazer isso para a propriedade x e y das imagens funcionar
 delete HTMLImageElement.prototype.x;
 delete HTMLImageElement.prototype.y;
 
-
 // Pra não ficar precisando calcular raiz de 2 toda hora
 const r2=Math.sqrt(2);
+
+// Versão do jogo. Se não for compatível, deleta o save antigo.
+const versao=1;
 
 
 // Html's
@@ -81,7 +98,6 @@ function getValue(i){
 }
 
 
-
 // Relativas à luta
 
 let larg,alt; // Largura e altura do div de batalha
@@ -93,9 +109,9 @@ const hbc=6,roac=12; // hbc = hitbox do coração, roac = raio real
 let premidas=[],tamPremidas=0; /* Guarda as teclas já apertadas, para ignorar novos eventos de aperto dela. Isso é necessário
   pois, se você segurar uma tecla por um tempo, o JavaScript começa a detectar vários eventos de click. */
 let t,ronda,fase,emJogo,tFim,fases,naoEPrimeira; // Relativas à fase
-let dific,acelerando,incrDificSubito=0.2,incrDificGradual,dificUsuario;
+let dific,acelerando,incrDificSubito=0.2,incrDificGradual,dificUsuario,meterValue,rondaFim;
 let numObst,obsts;
-let itens;
+let itens,arma,prot;
 let multFF; /* Multiplicador da velocidade do jogo. Se a velocidade for normal é igual a 1. Menor que 1 o jogo fica mais lento
 e maior fica mais rápido. */
 
@@ -107,18 +123,19 @@ let texto,textoAtual,txtDisponivel,pararTxt,pararJogo;
 
 // Relativas à ação "fight"
 
-const intv=300, // Intervalo médio entre as barrinhas
-  qtd=4, // Num de barrinhas
-  tt=intv*qtd, // Tempo total da ação fight
-  espera=500; // Espera para a 1a barrinha surgir
-const fadeDur=4*tt/19, // Duração da transição de visível para invisível das barrinhas
-  fadeStart=15*tt/19; // Tempo para a barrinha ser considerada um "miss" e ter sua transição iniciada
+let intv, // Intervalo médio entre as barrinhas
+  numBarras, // Num de barrinhas
+  tt; // Tempo total da ação fight
+const espera=500; // Espera para a 1a barrinha surgir
+let fadeDur, // Duração da transição de visível para invisível das barrinhas
+  fadeStart; // Tempo para a barrinha ser considerada um "miss" e ter sua transição iniciada
+let penalidades;
 const barraAtk=document.querySelector("#tiros"); // Div com as barrinhas brancas
 let hpOpon,hpMaxOpon;
-let atkPlayer,velPlayer;
+let atkPlayer,velPlayer,multAtk;
 
-let tInic,tAtual;
-let barrasDano;
+let tInic,tAtual,tLuta;
+let barrasDano,sangues;
 let danoLuta;
 let hits;
 let acertou;
@@ -136,25 +153,46 @@ function load(){
 
   try{
     if(loaded==null) throw 0;
-
     loaded=JSON.parse(loaded);
+    if(loaded.versao!=versao){
+alert("Sinto muito, mas, devido a mudanças no código e à minha preguiça de fazer compatibilidade com o formato antigo, seus saves foram pro saco... Se quiser uma compensação por isso, me contate:\n\n\
+E-mail: samuelfernandomendespires@gmail.com\n\
+Endereço: Rua do Barreiro, nº NaN\n\
+Atende por \"João Peludão\"");
+      throw 1;
+    }
     btnsMenu[1].removeAttribute("disabled");
 
-    let strItens="<span class='nobr'>";
     const itens=loaded.itens;
-    for(let j=0; j<itens.length; j++){
-      if(j!=0){
-        strItens+=",</span> <span class='nobr'>";
-      }
-      strItens+=itens[j];
+    let strItens;
+    if(itens.length==0){
+      strItens="Nenhum";
     }
-    strItens+="<span>";
+    else{
+      strItens="<span class='nobr'>";
+      for(let j=0; j<itens.length; j++){
+        if(j!=0){
+          strItens+=",</span> <span class='nobr'>";
+        }
+        strItens+=itens[j].nome;
+        if(itens[j].usos){
+          strItens+=" ("+itens[j].usos+")";
+        }
+      }
+      strItens+="</span>";
+    }
+
+    function removerUndefined(x){
+      return x=="undefined"? "Nenhuma": x;
+    }
 
     tooltipSave.innerHTML="\
       <div><dt>Rodada</dt><dd>"+(loaded.ronda+1)+"</dd></div>\
       <div><dt>Seu HP</dt><dd>"+loaded.hp.toFixed(0)+"</dd></div>\
       <div><dt>HP do oponente</dt><dd>"+loaded.hpOpon.toFixed(0)+"</dd></div>\
       <div><dt>Itens</dt><dd>"+strItens+"</dd></div>\
+      <div><dt>Defesa</dt><dd>"+removerUndefined(loaded.prot)+"</dd></div>\
+      <div><dt>Arma</dt><dd>"+removerUndefined(loaded.arma)+"</dd></div>\
     ";
   }
   catch(e){
@@ -179,6 +217,10 @@ const altApp=652/*app.offsetHeight*/,
   largApp=922/*app.offsetWidth*/;
   // Infelizmente temos que atualizar isso sempre que mudamos o layout.....
 const lpaApp=largApp/altApp;
+let sectionLeft,sectionTop;
+const section=document.querySelector("#itens");
+const ddAtk=document.querySelector("#ddAtk"),ddDef=document.querySelector("#ddDef");
+const modais=document.querySelectorAll(".modal");
 
 function autoSize(){
   let lpaW=innerWidth/innerHeight; // Largura por altura janela
@@ -194,14 +236,670 @@ function autoSize(){
   for(let i=0; i<tracks.length; i++){
     xInicTracks[i]=tracks[i].getBoundingClientRect().x;
   }
+
+  const rect=section.getBoundingClientRect();
+  sectionLeft=rect.left;
+  sectionTop=rect.top;
 }
 
+const divsMenu=document.querySelectorAll("#botoesMenu>div");
+let maior=0;
+for(let i=0; i<divsMenu.length; i++){
+  let cand=divsMenu[i].firstElementChild.offsetWidth;
+  if(cand>maior) maior=cand;
+}
+for(let i=0; i<divsMenu.length; i++){
+  divsMenu[i].style.width=(maior+1)+"rem";
+}
+
+
+// Itens
+
+const atkBase=5,defBase=5;
+let multDano,multInvul,multVel,restauracao,bonusItem,pularProx;
+
+function equiparProt(){
+  multDano=10/((prot.def||0)+defBase);
+
+  if(prot.nome=="Óculos"){
+    multInvul=2;
+  }
+  else{
+    multInvul=1;
+  }
+
+  if(prot.nome=="Botas"){
+    multVel=0.8;
+  }
+  else{
+    multVel=1;
+  }
+
+  if(prot.nome=="Avental"){
+    restauracao=2;
+  }
+  else{
+    restauracao=0;
+  }
+}
+
+function equiparArma(){
+  if(arma.nome=="Panela"){
+    bonusItem=4;
+  }
+  else{
+    bonusItem=0;
+  }
+
+  if(arma.nome=="Revólver"){
+    numBarras=6;
+    intv=250;
+    tt=1000;
+    fadeStart=15*tt/19;
+    penalidades=[0.64,0.76,0.88,1.12];
+  }
+  else if(arma.nome=="Panela"){
+    numBarras=5;
+    intv=200;
+    tt=1400;
+    fadeStart=15*tt/19;
+    penalidades=[0.61,0.74,0.87,1];
+  }
+  else if(arma.nome=="Arco"){
+    numBarras=4;
+    intv=300;
+    tt=1200;
+    fadeStart=15*tt/19;
+    penalidades=[0.5,0.66667,0.83333,1];
+  }
+  else{
+    numBarras=1;
+    tt=1000;
+    fadeStart=tt;
+    penalidades=[0.5,0.66667,0.83333,1];
+  }
+  fadeDur=4*tt/19;
+}
+
+
+function torta(){
+  return{
+    txItemUsado:"Você comeu a Torta.",
+    txHpCurado:"Sua vida foi completamente restaurada.",
+    txExtra:"",
+    funcConsumo:function () {
+      cura(hpMax);
+    },
+    nome:"Pie",
+    desc:"Restaura toda a vida."
+  };
+}
+function bife(){
+  return{
+    txItemUsado:"Você comeu o Bife.",
+    txHpCurado:"50 HP restaurados.",
+    txExtra:"",
+    funcConsumo:function () {
+      cura(50);
+    },
+    nome:"Steak",
+    desc:"Restaura 50 HP."
+  };
+}
+function seatea(){
+  return{
+    txItemUsado:"Você tomou o chá.",
+    txHpCurado:"25 HP restaurados.",
+    txExtra:"Sua velocidade aumentou!",
+    funcConsumo:function () {
+      cura(25);
+      velPlayer+=0.5;
+    },
+    nome:"Sea Tea",
+    desc:"Restaura 25 HP e aumenta velocidade em 25%."
+  };
+}
+function lhero(){
+  return{
+    txItemUsado:"Você comeu o sanduíche.",
+    txHpCurado:"38 HP restaurados.",
+    txExtra:"Seu ataque aumentou!",
+    funcConsumo:function () {
+      cura(38);
+      atkPlayer+=1.25;
+    },
+    nome:"L. Hero",
+    desc:"Restaura 38 HP e aumenta ataque em 12%."
+  };
+}
+function cookies(){
+  return{
+    txItemUsado:"Você pegou um cookie do pacote.",
+    txHpCurado:"30 HP restaurados.",
+    txExtra:"",
+    usos:3,
+    funcConsumo:function () {
+      this.usos--;
+      cura(30);
+    },
+    nome:"Cookies",
+    desc:"Restaura 30 HP. Pode ser comido 3 vezes."
+  };
+}
+
+
+// Equips
+
+function avental(){
+  return{
+    txItemUsado:"Você vestiu o avental.",
+    pronome:"Seu",
+    pretPerf:"ou",
+    def:3,
+    nome:"Avental",
+    desc:"+3 de defesa. Ganhe 2 de vida ao final de cada turno."
+  };
+}
+function colete(){
+  return{
+    txItemUsado:"Você vestiu o colete.",
+    pronome:"Seu",
+    pretPerf:"ou",
+    def:5,
+    nome:"Colete",
+    desc:"+5 de defesa."
+  };
+}
+function botas(){
+  return{
+    txItemUsado:"Você calçou as botas.",
+    pronome:"Suas",
+    pretPerf:"aram",
+    def:8,
+    nome:"Botas",
+    desc:"+8 de defesa. Diminui sua velocidade em 20%."
+  };
+}
+function oculos(){
+  return{
+    txItemUsado:"Você colocou os óculos.",
+    pronome:"Seus",
+    pretPerf:"aram",
+    def:2,
+    nome:"Óculos",
+    desc:"+2 de defesa. Duplica seu tempo de invencibilidade após tomar dano."
+  };
+}
+
+function adaga(){
+  return{
+    txItemUsado:"Você empunhou sua adaga.",
+    pronome:"Sua",
+    pretPerf:"ou",
+    atk:3,
+    nome:"Adaga",
+    desc:"+3 de ataque. Não requer muita precisão."
+  };
+}
+function revolver(){
+  return{
+    txItemUsado:"Você pega seu revólver.",
+    pronome:"Seu",
+    pretPerf:"ou",
+    atk:13,
+    nome:"Revólver",
+    desc:"+13 de ataque. Perca o próximo turno recarregando o revólver após atacar. Tiros certeiros dão dano imenso."
+  };
+}
+function arco(){
+  return{
+    txItemUsado:"Você prepara seu arco e flecha.",
+    pronome:"Seu",
+    pretPerf:"ou",
+    atk:5,
+    nome:"Arco",
+    desc:"+5 de ataque."
+  };
+}
+function panela(){
+  return{
+    txItemUsado:"Sua panela está pronta para causar destruição.",
+    pronome:"Sua",
+    pretPerf:"ou",
+    atk:4,
+    nome:"Panela",
+    desc:"+(Minha nota na prova de filosofia) de ataque. Os itens que você consome curam 4 a mais."
+  };
+}
+
+
+const comidasInic=[0,1,2,4,5,7,8,10];
+const defInic=1,atkInic=2;
+
+const itensInv=[
+  [
+    torta(),
+    bife(),
+    bife(),
+    bife(),
+    seatea(),
+    seatea(),
+    seatea(),
+    lhero(),
+    lhero(),
+    lhero(),
+    cookies(),
+    cookies(),
+    cookies()
+  ],
+  [
+    avental(),
+    colete(),
+    botas(),
+    oculos()
+  ],
+  [
+    adaga(),
+    revolver(),
+    arco(),
+    panela()
+  ]
+];
+
+const posNE=[[],[],[]];
+const posEq=[[],[]];
+const posInv=[];
+
+const ulInv=document.querySelector("#seus");
+const seus=[];
+const itemLists=document.querySelectorAll("#inv>ul");
+const elsDds=document.querySelectorAll("#equips dd");
+const aneInv=document.querySelector("#aneInv");
+const descInv=document.querySelector("#descAtual");
+const descInvH3=descInv.querySelector("h3");
+const descInvP=descInv.querySelector("p");
+const itemDds=[[],[]];
+
+function absolutificar(li,x){
+  li.className="abs";
+  li.style.left=li.left+"rem";
+  li.style.top=li.top+"rem";
+  li.tipo=x;
+  li.larg=li.offsetWidth;
+  li.alt=li.offsetHeight;
+  li.desloc=0;
+}
+function solidificar(ul){
+  ul.alt=ul.offsetHeight+3;
+  ul.style.height=ul.alt+"rem";
+}
+function getRekt(li,dsi,copy=true,v,i){
+  const ob={};
+  const rect=li.getBoundingClientRect();
+  ob.left=rect.left;
+  ob.top=rect.top;
+  if(copy){
+    li.left=li.origX=ob.left;
+    li.top=li.origY=ob.top;
+    li.dsi=dsi;
+    li.pv=v;
+  }
+  if(v!=undefined){
+    v[i]=ob;
+  }
+}
+function appendLi(el,v,vi,ii,ij){
+  v[vi]=itensInv[ii][ij];
+  v[vi].v=v;
+  el.appendChild(v[vi].li);
+}
+function pushLi(v,ii,ij){
+  const el=itensInv[ii][ij];
+  el.v=v;
+  v.push(el);
+}
+
+
+for(let i=0; i<itensInv.length; i++){
+  for(let j=0; j<itensInv[i].length; j++){
+    const li=itensInv[i][j].li=document.createElement("li");
+    li.textContent=itensInv[i][j].nome;
+    itemLists[i].appendChild(li);
+  }
+  solidificar(itemLists[i]);
+}
+
+let dummies=[
+  new Array(8),
+  new Array(1),
+  new Array(1)
+];
+for(let i=0; i<dummies.length; i++){
+  for(let j=0; j<dummies[i].length; j++){
+    dummies[i][j]=document.createElement("li");
+    itemLists[i].appendChild(dummies[i][j]);
+  }
+}
+
+for(let i=0; i<comidasInic.length; i++){
+  appendLi(ulInv,seus,i,0,comidasInic[i]);
+}
+appendLi(elsDds[0],itemDds[0],0,1,defInic);
+appendLi(elsDds[1],itemDds[1],0,2,atkInic);
+
+solidificar(ulInv);
+const itensNE=[[],[],[]];
+
+for(let i=0,j=0; j<itensInv[0].length; j++){
+  if(comidasInic[i]==j){
+    getRekt(itensInv[0][j].li,0,true,posInv,i);
+    i++;
+  }
+  else{
+    getRekt(itensInv[0][j].li,2,true,posNE[0],itensNE[0].length);
+    pushLi(itensNE[0],0,j);
+  }
+}
+for(let i=0; i<itensInv[1].length; i++){
+  if(i==defInic){
+    getRekt(itensInv[1][i].li,1,true,posEq[0],0);
+  }
+  else{
+    getRekt(itensInv[1][i].li,2,true,posNE[1],itensNE[1].length);
+    pushLi(itensNE[1],1,i);
+  }
+}
+for(let i=0; i<itensInv[2].length; i++){
+  if(i==atkInic){
+    getRekt(itensInv[2][i].li,1,true,posEq[1],0);
+  }
+  else{
+    getRekt(itensInv[2][i].li,2,true,posNE[2],itensNE[2].length);
+    pushLi(itensNE[2],2,i);
+  }
+}
+
+for(let i=0; i<dummies.length; i++){
+  for(let j=0; j<dummies[i].length; j++){
+    getRekt(dummies[i][j],undefined,false,posNE[i],j+itensNE[i].length);
+  }
+  for(let j=0; j<dummies[i].length; j++){
+    dummies[i][j].remove();
+  }
+}
+
+for(let i=0; i<itensInv.length; i++){
+  for(let j=0; j<itensInv[i].length; j++){
+    absolutificar(itensInv[i][j].li,i);
+  }
+}
+
+
+const merged=[];
+for(let k=0,i=0; k<itensInv.length; k++){
+  for(let j=0; j<itensInv[k].length; i++,j++){
+    merged[i]=itensInv[k][j];
+  }
+}
+
+const dropSpaces=[
+  document.querySelector("#inventario"),
+  document.querySelector("#equips"),
+  document.querySelector("#inv")
+];
+for(let i=0; i<dropSpaces.length; i++){
+  const obj=dropSpaces[i].getBoundingClientRect();
+  dropSpaces[i].top=obj.top;
+  dropSpaces[i].left=obj.left;
+  dropSpaces[i].larg=dropSpaces[i].offsetWidth;
+  dropSpaces[i].alt=dropSpaces[i].offsetHeight;
+}
+
+
+let dragX,dragY,drop,dropInd,hoverIdx=-1,msmTipo;
+
+function moveTo(el1,el2){
+  el1.style.left=el2.origX+"rem";
+  el1.style.top=el2.origY+"rem";
+}
+function transMove(el1,el2){
+  el1.classList.add("hasTransition");
+  moveTo(el1,el2);
+  setTimeout(function () {
+    el1.classList.remove("hasTransition");
+  },250);
+}
+function moveComplete(fn,el1,el2){
+  el1.classList.add("hasTransition");
+  void el1.offsetHeight;
+  fn(el1,el2);
+  setTimeout(function () {
+    el1.classList.remove("hasTransition");
+  },250);
+}
+function resetPos(el){
+  el.left=el.origX;
+  el.top=el.origY;
+}
+
+function copyElPos(el,el2,mv=true){
+  el.left=el.origX=el2.origX;
+  el.top=el.origY=el2.origY;
+  if(mv){
+    transMove(el,el);
+  }
+}
+function copyElData(el,el2){
+  el.v=el2.v;
+  el.li.dsi=el2.li.dsi;
+  el.li.pv=el2.li.pv;
+}
+function copyEl(el,el2,mv=true){
+  copyElPos(el.li,el2.li,mv);
+  copyElData(el,el2);
+}
+
+function moveToPos(el1){
+  const po=posNE[el1.tipo][itensNE[el1.tipo].length];
+  el1.style.left=po.left+"rem";
+  el1.style.top=po.top+"rem";
+}
+function copyPos(el,v1,v2,mv=true){
+  el.li.left=el.li.origX=v2[v1.length].left;
+  el.li.top=el.li.origY=v2[v1.length].top;
+  v1.push(el);
+  el.li.dsi=dropInd;
+  el.v=v1;
+  el.li.pv=v2;
+  if(mv){
+    transMove(el.li,el.li);
+  }
+}
+
+function chainRemoval(el){
+  let i;
+  for(i=el.v.length-1; el.v[i]!=el; i--){
+    copyElPos(el.v[i].li,el.v[i-1].li);
+  }
+  el.v.splice(i,1);
+}
+
+function dropEInvalido(i,drag){
+  const el=merged[i].li;
+  let arg1,arg2;
+
+  if(dropInd==el.dsi){
+    return true;
+  }
+  else if(dropInd==2){
+    arg1=itensNE[el.tipo];
+    arg2=posNE[el.tipo];
+  }
+  else if(dropInd==0){
+    if(drag || seus.length<8){
+      arg1=seus;
+      arg2=posInv;
+    }
+  }
+  else if(dropInd==1){
+    if(el.tipo!=0){
+      const vet=itemDds[el.tipo-1];
+      if(vet.length==0 || drag){
+        arg1=vet;
+        arg2=posEq[el.tipo-1];
+      }
+    }
+  }
+  else{
+    alert("Deu um pau crítico. Por favor contate o desenvolvedor:\n\
+E-mail: samuelfernandomendespires@gmail.com\n\
+Endereço: Rua do Barreiro, nº NaN\n\
+Atende por \"João Peludão\"\n\n\
+Código do erro: COMPUTER_ABOUT_TO_EXPLODE_EXCEPTION");
+  }
+
+  const ret=arg1==undefined;
+  if(!ret){
+    if(!drag){
+      chainRemoval(merged[i],merged[i].v);
+      copyPos(merged[i],arg1,arg2);
+    }
+  }
+  return ret;
+}
+
+function getTruePos(e){
+  return[
+    (e.pageX-sectionLeft)/rem,
+    (e.pageY-sectionTop)/rem
+  ];
+}
+function checkHover(el,x,y){
+  return x>=el.left && y>=el.top && x<=el.left+el.larg && y<=el.top+el.alt;
+}
+function getDrop(x,y){
+  for(let j=0; j<dropSpaces.length; j++){
+    if(checkHover(dropSpaces[j],x,y)){
+      dropInd=j;
+      drop=dropSpaces[j];
+      return;
+    }
+  }
+  dropInd=-1;
+}
+
+function updateDef(){
+  ddDef.innerHTML=defBase+(itemDds[0][0]? itemDds[0][0].def: 0);
+}
+function updateAtk(){
+  ddAtk.innerHTML=atkBase+(itemDds[1][0]? itemDds[1][0].atk: 0);
+}
+
+for(let i=merged.length-1; i>=0; i--){
+  merged[i].li.mousemove=function (e) {
+    const[trueX,trueY]=getTruePos(e);
+
+    merged[i].li.left=e.pageX/rem-dragX;
+    merged[i].li.top=e.pageY/rem-dragY;
+    merged[i].li.style.left=merged[i].li.left+"rem";
+    merged[i].li.style.top=merged[i].li.top+"rem";
+
+    for(let j=0; j<merged.length; j++){
+      if(j!=i){
+        if(checkHover(merged[j].li,trueX,trueY)){
+          if(!merged[j].li.desloc){
+            getDrop(trueX,trueY);
+            msmTipo=merged[j].li.tipo==merged[i].li.tipo;
+            if(!msmTipo && dropInd!=0 || dropEInvalido(i,true)){
+              merged[j].li.desloc=1;
+            }
+            else{
+              let ptrFunc=msmTipo? moveTo: moveToPos;
+              moveComplete(ptrFunc,merged[j].li,merged[i].li);
+              hoverIdx=j;
+              merged[j].li.desloc=2;
+            }
+          }
+        }
+        else if(merged[j].li.desloc){
+          moveComplete(moveTo,merged[j].li,merged[j].li);
+          merged[j].li.desloc=0;
+          hoverIdx=-1;
+        }
+      }
+    }
+  };
+
+
+  merged[i].li.mouseup=function (e) {
+    if(hoverIdx==-1){
+      const[trueX,trueY]=getTruePos(e);
+      getDrop(trueX,trueY);
+      if(dropInd==-1 || dropEInvalido(i,false)){
+        moveComplete(moveTo,merged[i].li,merged[i].li);
+      }
+      else{
+        updateAtk();
+        updateDef();
+      }
+      merged[i].li.desloc=0;
+    }
+    else{
+      merged[hoverIdx].li.desloc=0;
+
+      if(msmTipo){
+        merged[i].v[merged[i].v.indexOf(merged[i])]=merged[hoverIdx];
+        merged[hoverIdx].v[merged[hoverIdx].v.indexOf(merged[hoverIdx])]=merged[i];
+        const temp={li:{}};
+        copyEl(temp,merged[i],false);
+        copyEl(merged[i],merged[hoverIdx]);
+        copyEl(merged[hoverIdx],temp,false);
+      }
+      else{
+        const antigo=merged[hoverIdx].v.indexOf(merged[hoverIdx]);
+        const novo=merged[hoverIdx].li.tipo;
+        chainRemoval(merged[i]);
+        merged[hoverIdx].v[antigo]=merged[i];
+        copyEl(merged[i],merged[hoverIdx]);
+        copyPos(merged[hoverIdx],itensNE[novo],posNE[novo],false);
+        merged[hoverIdx].li.dsi=2;
+      }
+
+      resetPos(merged[hoverIdx].li);
+      hoverIdx=-1;
+      updateAtk();
+      updateDef();
+    }
+    resetPos(merged[i].li);
+
+    removeEventListener("mouseup",merged[i].li.mouseup);
+    removeEventListener("mousemove",merged[i].li.mousemove);
+  };
+
+
+  merged[i].li.addEventListener("mousedown",function (e) {
+    dragX=e.pageX/rem-this.left;
+    dragY=e.pageY/rem-this.top;
+    addEventListener("mousemove",merged[i].li.mousemove);
+    addEventListener("mouseup",merged[i].li.mouseup);
+
+    descInv.classList.remove("oculto");
+    aneInv.classList.add("oculto");
+    descInvH3.innerHTML=merged[i].nome;
+    descInvP.innerHTML=merged[i].desc;
+  });
+}
+
+
 document.querySelector("#conteudoDif>p").style.width=document.querySelector("#conteudoDif>div").offsetWidth+"rem";
+html.classList.add("autosized");
 autoSize();
 for(let i=0; i<tracks.length; i++){
   slidersLeftClick[i]=slidersLeft[i]=slidersLeftRem[i]*rem;
 }
 addEventListener("resize",autoSize);
+updateAtk();
+updateDef();
 
 const tudo=document.querySelectorAll("#app *");
 for(let i=0; i<tudo.length; i++){
@@ -474,6 +1172,12 @@ function resetRonda(){
 
   if(naoEPrimeira){
     removerVetorEl(obsts);
+    const vaiPular=pularProx;
+    setTimeout(function () {
+      if(!vaiPular) elAtual.classList.add("hasHeart");
+      hp=Math.min(hp+restauracao,hpMax);
+      atualizaVida();
+    },500);
     if(notTut && treinando!=-1){
       exit();
       return;
@@ -501,21 +1205,35 @@ function resetRonda(){
           dific+=incrDificGradual;
         }
 
-        if(hpOpon>0 && ronda<2*fasesPadrao.length+1){
-          let strItens="[";
-          for(let i=0;;){
-            strItens+="\""+itens[i].nome+"\"";
-            if(++i>=itens.length){
-              strItens+="]";
-              break;
-            }
-            else{
-              strItens+=",";
+        if(hpOpon>0 && ronda<rondaFim){
+          let strItens;
+          if(itens.length==0){
+            strItens="[]";
+          }
+          else{
+            strItens="[";
+            for(let i=0;;){
+              strItens+="{\"nome\":\""+itens[i].nome+"\"";
+              if(itens[i].usos){
+                strItens+=",\"usos\":\""+itens[i].usos+"\"";
+              }
+              strItens+="}";
+              if(++i>=itens.length){
+                strItens+="]";
+                break;
+              }
+              else{
+                strItens+=",";
+              }
             }
           }
 
           localStorage.setItem("save",
-            "{\"hp\":"+hp+",\"hpOpon\":"+hpOpon+",\"itens\":"+strItens+",\"ronda\":"+ronda+"}");
+            "{\"hp\":"+hp+",\"hpOpon\":"+hpOpon+",\"itens\":"+strItens+
+            ",\"ronda\":"+ronda+",\"rondaFim\":"+rondaFim+
+            ",\"arma\":\""+arma.nome+"\",\"prot\":\""+prot.nome+
+            '","versao":1'+ // Evitar problemas com saves antigos
+          "}");
         }
 
         else{
@@ -526,13 +1244,21 @@ function resetRonda(){
       }
 
       div.style.width=div.style.height="";
-      coracaoErrante.classList.remove("pseudoOculto");
 
       div.classList.add("hasTransition");
       timeoutApagavel(function () {
         div.classList.remove("hasTransition");
-        mudarDivId("ane");
-        emJogo=-1;
+        if(pularProx){
+          mudarDivId("itemUsado");
+          pItemUsado.innerHTML="Você passa esse turno recarregando seu revólver.";
+          pHpCurado.innerHTML=pExtra.innerHTML="";
+          emJogo=-3;
+          pularProx=false;
+        }
+        else{
+          mudarDivId("ane");
+          emJogo=-1;
+        }
       },500);
     }
   }
@@ -543,7 +1269,7 @@ function resetRonda(){
 }
 
 
-let roaxo,roayo,cox,coy,dx,ccy,ccx; // Variáveis hitbox
+let roaxo,roayo,cox,coy,dx,dy,ccy,ccx; // Variáveis hitbox
 
 let funcFrameAntes,funcFrameDepois,funcFim;
 let numPlats,numChaves;
@@ -1204,7 +1930,7 @@ function ffdChave(start){
     }
 
     for(let k=0; k<2; k++){
-      let eixoMov,areaCol,coordMovAnt,coordMov;
+      let eixoMov,eixoPara,coordPara,coordParaAnt,areaCol,coordMovAnt,coordMov,espessura;
 
       if(k==1){
         if(velY==0) continue;
@@ -1296,7 +2022,7 @@ function gaster(o,funcCria){
   let transformStr;
   let tDec;
   const durTrans=10,deslocTrans=24;
-  let aoContr;
+  let aoContr,triggered;
 
   aviso.funcApar=function () {
     if(funcCria) funcCria(o);
@@ -1493,7 +2219,6 @@ function caixaGrandeCPrevia(o,script,funcReset){
         multFF=0;
         fundo.classList.add("visivel");
         nAtivou=false;
-        pode=false;
 
         x=larg/2-roac;
         y=alt/2-roac;
@@ -1590,7 +2315,7 @@ const fasesPadrao=[
         }
       }
 
-      setMultDific(1,1);
+      setMultDific(1,0.8);
       const spd1=1.1111111111,spd2=0.8888888889;
 
       naSorte(4,spd1,function (i) {
@@ -1618,7 +2343,7 @@ const fasesPadrao=[
     larg:240,
     alt:24,
     fn:function () {
-      setMultDific(1);
+      setMultDific(1,1);
       const cores2=["laranja","azul"];
       let t=0;
       const velx1=1.5,vely1=1.5,velx2=0.75,vely2=1.5;
@@ -1666,7 +2391,7 @@ const fasesPadrao=[
     larg:240,
     alt:240,
     fn:function () {
-      setMultDific(0.6);
+      setMultDific(0.6,1);
       const vel=1,num=24,tCada=120;
 
       for(let i=0; i<num; i++){
@@ -1937,7 +2662,7 @@ const fasesPadrao=[
             let parteQInteressa={};
 
             function setRandom(){
-              parteQInteressa.girar180=p=Math.random()>0.5;
+              parteQInteressa.girar180=Math.random()>0.5;
               parteQInteressa.areaX=Math.floor(Math.random()*areas);
               if(atual>=2){
                 if(parteQInteressa.girar180==gastersAnts[atual-2].girar180
@@ -1990,7 +2715,8 @@ const fasesPadrao=[
         },function (o) {
           if(multFF>1){
             o.tAtk=Math.round(50/multPt2);
-            o.dano=9/o.tAtk;
+            o.dano=9*1.8/o.tAtk; // nao sei
+            o.invul=1;
           }
         });
       }
@@ -2054,7 +2780,7 @@ const fasesPadrao=[
     larg:400,
     alt:400,
     fn:function () {
-      setMultDific(0.5);
+      setMultDific(0.5,0.7);
       y=alt-2*roac-10;
       x=10;
 
@@ -2149,8 +2875,8 @@ const fasesPadrao=[
     larg:400,
     alt:400,
     fn:function () {
-      setMultDific(1.25);
-      const vel=1,num=24,tCada=90;
+      setMultDific(1.25,1);
+      const vel=1,num=22,tCada=90;
       let vicio=0.5,resAnt;
 
       for(let i=0; i<num; i++){
@@ -2179,12 +2905,12 @@ const fasesPadrao=[
     larg:240,
     alt:240,
     fn:function () {
-      setMultDific(0.5);
+      setMultDific(0.5,0.7);
       y=24;
       let vel4,angCirc,nFoi3;
       let nAcabou1=true;
       const vel2=1*multDific;
-      const tCirc=376/multDific,velCirc=0.5;
+      const tCirc=386/multDific,velCirc=0.5;
       const tInic=50/multDific;
 
       caixaGrandeCPrevia({
@@ -2374,7 +3100,7 @@ const fasesPadrao=[
     larg:240,
     alt:400,
     fn:function () {
-      setMultDific(0.2);
+      setMultDific(0.2,0.4);
       let espacoAtual=2,espacoAnt=espacoAtual;
       let dir,dirAnt;
       const tamCxMaior=48;
@@ -2453,7 +3179,7 @@ const fasesPadrao=[
     larg:360,
     alt:24,
     fn:function () {
-      setMultDific(0.3);
+      setMultDific(0.3,0.5);
       const tamCxMaior=72;
       const espacos=larg/tamCxMaior;
       let espacoAtual=2,espacoAnt=espacoAtual;
@@ -2574,7 +3300,7 @@ const checkMsgs=document.querySelectorAll("#checkMsg>div");
 let lastCheck;
 let bateria;
 const spanBateria=document.querySelector("#bateria");
-const decrBateria=100/(2*fasesPadrao.length+1);
+let decrBateria;
 
 function showCheck(i){
   if(lastCheck!=checkMsgs[i]){
@@ -2611,10 +3337,11 @@ function keyup(e){
 
 function prepararFase(fDepois){
   let flagNormal=true,flagHitkill=false;
-  const cond=hpOpon<=0;
+  const cond=hpOpon<=0,
+    condPacifista=!cond && (fase>=12 || fase>=10 && hpOpon==hpMaxOpon);
 
   if(tut){
-    if(cond){
+    if(cond || condPacifista){
       if(ronda==8){
         flagHitkill=true;
       }
@@ -2623,13 +3350,12 @@ function prepararFase(fDepois){
     }
     else if(ronda==10){
       ronda--;
-      fase--;
     }
   }
   else{
     const cond2=cond || treinando==fasesPadrao.length;
     if(cond2) ronda=-1;
-    if(cond2 || ronda==2*fases.length){
+    if(cond2 || ronda==rondaFim-1){
       alt=240;
       larg=240;
       flagNormal=false;
@@ -2701,7 +3427,7 @@ function prepararFase(fDepois){
       texto=["Agora vamos dirigir nossa atenção a esses botões aí embaixo.",
       "Em sua luta, após cada ataque do oponente, você poderá navegar pelo menu, usando as setinhas, para escolher uma ação.",
       "A ação <span class='btnToriel'>FIGHT</span> te permite dar dano no oponente.",
-      "Barras horizontais aparecerão e você deve apertar Z quando elas estiverem no meio da tela, para maximizar o dano.",
+      "Barras varticais aparecerão e você deve apertar Z quando elas estiverem no meio da tela, para maximizar o dano.",
       "Tente usá-la contra este boneco. Aperte Z para selecioná-la."];
     }
 
@@ -2719,6 +3445,9 @@ function prepararFase(fDepois){
         texto=["Eita.",
         "Você é muito mais forte que eu pensava. A luta vai ser tranquila para você, suponho.",
         "Mas, continuando..."];
+      }
+      else if(condPacifista){
+        texto=["Pelo visto você não é um cara do tipo agressivo, então vamos pular essa parte."];
       }
       else{
         texto=[];
@@ -2739,12 +3468,12 @@ function prepararFase(fDepois){
     if(ronda==-1){
       texto=["Sobrecarregando armas, iniciando sequência de autodestruição..."];
     }
+    else if(ronda==rondaFim-1){
+      texto=["Desisto."];
+    }
     else if(ronda==fases.length){
       texto=["Acabaram as fases. Agora vai repetir tudo de novo...",
       "Só que mais rápido, é claro."];
-    }
-    else if(ronda==2*fases.length){
-      texto=["Desisto."];
     }
     else if(ronda==6){
       texto=["Você já me viu mudar a velocidade da passagem do tempo. Mas e a direção dele?"];
@@ -2868,6 +3597,8 @@ function keydown(e){
         else if(e.which==39){
           if(idxEla!=botoes.length-1) moverCoracao(botoes,idxEla+1);
         }
+
+        fnSairQlqrTecla();
       }
       else{
         const eListaDuplaRet=eListaDupla();
@@ -2913,18 +3644,18 @@ function keydown(e){
       if(vetorAtual==botoes){
         mudarDivId(elAtual.dataset.div);
 
-
         if(elAtual.dataset.div=="fight"){
 
           // Fight!! Início
 
-          coracaoErrante.classList.add("pseudoOculto");
+          elAtual.classList.remove("hasHeart");
           emJogo=-2;
           hits=0;
-          danoLuta=atkPlayer*(0.95+0.1*Math.random());
+          danoLuta=atkPlayer*multAtk*(atkBase+(arma.atk||0))*(0.95+0.1*Math.random());
           barrasDano=[];
           sangues=[];
           acertou=false;
+          if(arma.nome=="Revólver") pularProx=true;
 
           function criaBarraDano(i){
             barrasDano[i]=criarElEfemero("div");
@@ -2941,44 +3672,91 @@ function keydown(e){
             tLuta[0]=0;
             tInic=performance.now(); // Pega tempo atual (em milissegundos)
             criaBarraDano(0);
-            for(let i=1; ; ++i){
-              tLuta[i]=tLuta[i-1]+intv/2+Math.random()*intv;
-              timeoutApagavel(function () {
-                criaBarraDano(i);
-              },tLuta[i]);
+            if(numBarras>1){
+              for(let i=1; ; ++i){
+                tLuta[i]=tLuta[i-1]+intv/2+Math.random()*intv;
+                timeoutApagavel(function () {
+                  criaBarraDano(i);
+                },tLuta[i]);
 
-              if(i==qtd-1){
-                timeoutFim=timeoutApagavel(function () {
-                  danoLuta*=Math.pow(0.5,4-hits);
-                  finalizarFight();
-                },tLuta[i]+tt);
-                break;
+                if(i==numBarras-1){
+                  timeoutFim=timeoutApagavel(function () {
+                    danoLuta*=Math.pow(0.5,numBarras-hits);
+                    finalizarFight();
+                  },tLuta[i]+tt);
+                  break;
+                }
               }
+            }
+            else{
+              timeoutFim=timeoutApagavel(function () {
+                danoLuta=0;
+                finalizarFight();
+              },fadeStart+fadeDur);
             }
           },espera);
         }
         else{
-          moverCoracao(lis[idxDiva],0);
+          if(lis[idxDiva].length){
+            moverCoracao(lis[idxDiva],0);
+          }
+          else{
+            bobocabo.classList.remove("oculto");
+            sairQlqrTecla=true;
+          }
         }
       }
 
       else{
-        coracaoErrante.classList.add("pseudoOculto");
-
         if(divAtual.id=="item"){
           emJogo=-3;
           mudarDivId("itemUsado");
 
           const o=itens[idxEla];
           pItemUsado.innerHTML=o.txItemUsado;
-          pHpCurado.innerHTML=o.txHpCurado;
-          pExtra.innerHTML=o.txExtra;
-          o.funcConsumo();
 
-          removerElEfemero(elAtual);
-          lis[2].splice(idxEla, 1);
-          itens.splice(idxEla, 1);
-          moverCoracao(botoes,2);
+          if(o.li.tipo==0){
+            pHpCurado.innerHTML=o.txHpCurado+
+              (bonusItem && o.nome!="Pie"? " (+"+bonusItem+" de bônus)": "");
+            pExtra.innerHTML=o.txExtra;
+            o.funcConsumo();
+
+            if(o.usos==undefined || o.usos==0){
+              removerItemAtual();
+            }
+            else{
+              lis[2][idxEla].spam.innerHTML="Cookies ("+o.usos+")";
+            }
+          }
+
+          else{
+            pExtra.innerHTML="";
+
+            function concordancia(ant){
+              if(ant.nome){
+                pHpCurado.innerHTML=ant.pronome+" "+ant.nome+" volt"+ant.pretPerf+" para seu inventário.";
+                lis[2][idxEla].spam.innerHTML=ant.nome;
+                itens[idxEla]=ant;
+              }
+              else{
+                pHpCurado.innerHTML="";
+                removerItemAtual();
+              }
+            }
+
+            if(o.li.tipo==1){
+              concordancia(prot);
+              prot=o;
+              equiparProt();
+            }
+            else{
+              concordancia(arma);
+              arma=o;
+              equiparArma();
+            }
+          }
+
+          moverCoracao(botoes,2,false);
         }
 
         else if(divAtual.id=="act"){
@@ -2989,11 +3767,11 @@ function keydown(e){
               spanBateria.innerHTML=(100-ronda*decrBateria).toFixed(0);
             }
           }
-          moverCoracao(botoes,1);
+          moverCoracao(botoes,1,false);
         }
 
         else{
-          moverCoracao(botoes,3);
+          moverCoracao(botoes,3,false);
           sumirDivEPreparar();
         }
       }
@@ -3008,6 +3786,9 @@ function keydown(e){
           }
         }());
         mudarDivId("ane");
+      }
+      else{
+        fnSairQlqrTecla();
       }
     }
   }
@@ -3045,24 +3826,24 @@ function keydown(e){
       sangue.style.left=atual/tt*100+"%";
       acertou=true;
 
-      danoLuta*=function(){
+      danoLuta*=penalidades[function(){
         let porc=(tt2-Math.abs(tt2-atual))/tt2;
         /* Multiplica o dano por um número menor que 1 se o ataque foi imperfeito */
         if(porc<8/19){
-          return 0.5;
+          return 0;
         }
         else if(porc<14/19){
-          return 2/3;
-        }
-        else if(porc<18/19){
-          return 5/6;
-        }
-        else{
           return 1;
         }
-      }();
+        else if(porc<18/19){
+          return 2;
+        }
+        else{
+          return 3;
+        }
+      }()];
 
-      if(hits==qtd){
+      if(hits==numBarras){
         timeoutApagavel(function () {
           clearTimeout(timeoutFim);
           finalizarFight();
@@ -3119,7 +3900,7 @@ function novaRonda(){ // Carrega a fase atual
   x=larg/2-roac;
   atualizarPosCor();
 
-  if(ronda==-1 || ronda==2*fases.length){ // Qdo ele morre vai pra essa ronda
+  if(ronda==-1 || ronda==rondaFim-1){ // Qdo ele morre vai pra essa ronda
     function dificUltimaRonda(n){
       return formulaDific(dificUsuario,n);
     }
@@ -3365,8 +4146,8 @@ function novaRonda(){ // Carrega a fase atual
     gerar(num,0,2);
     gerar(num/2,1,1);
     gerar(num/4,1.25,0.5);
-    gerar(num/8,1.375,0.25);
-    gerar(num/16,1.4375,0.125);
+    gerar(num/8,1.385,0.25);
+    gerar(num/16,1.4385,0.125);
 
     let vivo=true;
 
@@ -3421,10 +4202,12 @@ function novaRonda(){ // Carrega a fase atual
 
 function inicFase(){ // Chamada quando o jogo inicia
   naoEPrimeira=tut;
-  atkPlayer=100;
+  atkPlayer=10;
   velPlayer=2;
   hpMax=76;
   acelerando=false;
+  pularProx=false;
+  sairQlqrTecla=false;
   elsTemps=[];
   divMenu.classList.add("oculto");
   app.classList.remove("oculto");
@@ -3434,82 +4217,35 @@ function inicFase(){ // Chamada quando o jogo inicia
   spansLetra=[];
 
 
-  function torta(){
-    return{
-      txItemUsado:"Você comeu a Torta.",
-      txHpCurado:"Sua vida foi completamente restaurada.",
-      txExtra:"",
-      funcConsumo:function () {
-        cura(hpMax);
-      },
-      nome:"Pie"
-    }
-  }
-  function bife(){
-    return{
-      txItemUsado:"Você comeu o Bife.",
-      txHpCurado:"50 HP restaurados.",
-      txExtra:"",
-      funcConsumo:function () {
-        cura(50);
-      },
-      nome:"Steak"
-    }
-  }
-  function seatea(){
-    return{
-      txItemUsado:"Você tomou o chá.",
-      txHpCurado:"25 HP restaurados.",
-      txExtra:"Sua velocidade aumentou!",
-      funcConsumo:function () {
-        cura(25);
-        velPlayer+=0.5;
-      },
-      nome:"Sea Tea"
-    }
-  }
-  function lhero(){
-    return{
-      txItemUsado:"Você comeu o sanduíche.",
-      txHpCurado:"37 HP restaurados.",
-      txExtra:"Seu ataque aumentou!",
-      funcConsumo:function () {
-        cura(37);
-        atkPlayer+=12.5;
-      },
-      nome:"L. Hero"
-    }
-  }
-
-
   function padrao(){
     ronda=-1;
     fase=ronda;
     hp=hpMax;
     hpOpon=hpMaxOpon;
+    if(meterValue<0.5){
+      rondaFim=Math.floor((1+2*meterValue)*fasesPadrao.length)+1;
+    }
+    else{
+      rondaFim=2*fasesPadrao.length+1;
+    }
 
-    itens=[
-      torta(),
-      bife(),
-      bife(),
-      bife(),
-      seatea(),
-      seatea(),
-      lhero(),
-      lhero()
-    ];
+    itens=Array.from(seus);
+    arma=itemDds[1][0]||{};
+    prot=itemDds[0][0]||{};
   }
 
 
   if(!tut){
     showCheck(0);
 
-    const meterValue=getValue(0);
+    meterValue=getValue(0);
     if(meterValue<0.5){
       dificUsuario=0.7+0.6*meterValue;
+      multAtk=2-2*meterValue;
     }
     else{
       dificUsuario=0.6+0.8*meterValue;
+      multAtk=1;
     }
 
     if(treinando!=-1){
@@ -3521,7 +4257,6 @@ function inicFase(){ // Chamada quando o jogo inicia
         fases=[];
       }
       divAtual.classList.remove("visivel");
-      coracaoErrante.classList.add("pseudoOculto");
     }
     else{
       dific=1;
@@ -3538,6 +4273,7 @@ function inicFase(){ // Chamada quando o jogo inicia
       fase=(ronda-1)%fases.length+1;
       hp=loaded.hp;
       hpOpon=loaded.hpOpon;
+      rondaFim=loaded.rondaFim;
       itens=[];
 
       if(ronda>fases.length){
@@ -3545,26 +4281,81 @@ function inicFase(){ // Chamada quando o jogo inicia
         dific+=incrDificSubito+(incrDificGradual*(-1+(ronda-fases.length)));
       }
 
+      let tipo;
+      function matchArmas(x){
+        switch (x) {
+          case "Adaga":
+          tipo=2;
+          return adaga;
+          case "Revólver":
+          tipo=2;
+          return revolver;
+          case "Panela":
+          tipo=2;
+          return panela;
+          case "Arco":
+          tipo=2;
+          return arco;
+        }
+        return Object;
+      }
+      function matchProts(x){
+        switch (x) {
+          case "Avental":
+          tipo=1;
+          return avental;
+          case "Botas":
+          tipo=1;
+          return botas;
+          case "Óculos":
+          tipo=1;
+          return oculos;
+          case "Colete":
+          tipo=1;
+          return colete;
+        }
+        return Object;
+      }
+
       const itensLoad=loaded.itens;
       for(let i=0; i<itensLoad.length; i++){
         itens[i]=function () {
-          switch (itensLoad[i]) {
+          switch (itensLoad[i].nome) {
             case "Sea Tea":
+            tipo=0;
             return seatea;
             case "Pie":
+            tipo=0;
             return torta;
             case "Steak":
+            tipo=0;
             return bife;
             case "L. Hero":
+            tipo=0;
             return lhero;
+            case "Cookies":
+            tipo=0;
+            return cookies;
           }
+          let ret=matchArmas(itensLoad[i].nome);
+          if(ret==Object){
+            ret=matchProts(itensLoad[i].nome);
+          }
+          return ret;
         }()();
+        if(itensLoad[i].nome=="Cookies"){
+          itens[i].usos=itensLoad[i].usos;
+        }
+        itens[i].li={tipo:tipo};
       }
+      arma=matchArmas(loaded.arma)();
+      prot=matchProts(loaded.prot)();
     }
     else{
       padrao();
     }
 
+    decrBateria=100/rondaFim;
     setImgOpon("boss.gif");
     resetRonda();
   }
@@ -3573,6 +4364,7 @@ function inicFase(){ // Chamada quando o jogo inicia
   else{
     showCheck(1);
     hpMaxOpon=95;
+    multAtk=1;
     padrao();
 
     function noHitPula(nova){
@@ -3794,11 +4586,30 @@ function inicFase(){ // Chamada quando o jogo inicia
     setImgOpon("Toriel.png");
     resetMeiaBoca();
     sumirDivEPreparar();
-    coracaoErrante.classList.add("pseudoOculto");
     divBattle.classList.remove("visivel");
-    flagHitkill=false;
   }
 
+
+  {
+    let i;
+    for(i=0; i<itens.length; i++){
+      lis[2][i]=lisItens[i];
+    }
+    lis[2].splice(i);
+    for(; i<lisItens.length; i++){
+      lisItens[i].classList.add("oculto");
+    }
+  }
+
+  for(let i=0; i<itens.length; i++){
+    const spam=criarElEfemero("span");
+    lis[2][i].spam=spam;
+    spam.innerHTML=itens[i].nome+(itens[i].usos? " ("+itens[i].usos+")": "");
+    lis[2][i].appendChild(spam);
+  }
+
+  equiparProt();
+  equiparArma();
   atualizaVida();
   atualizaVidaOpon();
   spanHpMax.innerHTML=hpMax;
@@ -3829,25 +4640,35 @@ function mudaVel(tecla,z){ // Muda velocidade com base na tecla apertada
 
 /* Navegação pré-batalha */
 
-let errante=document.querySelector("#coracaoErrante");
 let elAtual,idxEla;
 let divAtual,idxDiva;
 let vetorAtual;
-let botoes=document.querySelectorAll("#botoes button");
-let containers=document.querySelectorAll(".tx"),lenCont=containers.length;
-let lis=[];
+const botoes=document.querySelectorAll("#botoes button");
+const containers=document.querySelectorAll(".tx"),lenCont=containers.length;
+let lis=[],lisItens=[];
+const bobocabo=document.querySelector("#bobocabo");
+let sairQlqrTecla;
 
-function moverCoracao(vetor,i){
+function fnSairQlqrTecla(){
+  if(sairQlqrTecla){
+    sairQlqrTecla=false;
+    mudarDivId("ane");
+  }
+}
+
+function removerItemAtual(){
+  elAtual.classList.add("oculto");
+  lis[2].splice(idxEla, 1);
+  itens.splice(idxEla, 1);
+}
+
+function moverCoracao(vetor,i,addClass=true){
   let el=vetor[i];
-  if(elAtual&&elAtual.tagName=="LI") elAtual.classList.remove("hasHeart");
+  if(elAtual) elAtual.classList.remove("hasHeart");
   elAtual=el;
-  if(elAtual.tagName=="LI") elAtual.classList.add("hasHeart");
+  if(addClass) elAtual.classList.add("hasHeart");
   idxEla=i;
   vetorAtual=vetor;
-  let obj=el.getBoundingClientRect();
-  let teste=vetor==botoes;
-  errante.style.top=(obj.top+scrollY)/rem+(teste? roac: 7)+"rem";
-  errante.style.left=obj.left/rem+(teste? roac: -3)+"rem";
 }
 
 function mudarDivId(id){
@@ -3863,21 +4684,34 @@ function mudarDivId(id){
   }
 }
 
+function criarCoracao(el){
+  const cor=document.createElement("div");
+  for(let i=0; i<2; i++){
+    const novo=document.createElement("div");
+    novo.className="arredondador";
+    cor.appendChild(novo);
+  }
+  cor.classList.add("coracao");
+  el.prepend(cor);
+}
+
 for(let i=0; i<lenCont; i++){
   let filho=containers[i].childNodes[1];
   if(filho&&filho.tagName=="UL"){
     // Ignora ChildNodes vazios (que só contêm espaço)
-    lis[i]=function(f) {
-      let semVazios=[];
-      for(let i=1; i<f.length; i+=2){
-        semVazios.push(f[i]);
-      }
-      return semVazios;
-    }(filho.childNodes);
+    lis[i]=Array.from(filho.children);
+    for(let j=0; j<lis[i].length; j++){
+      criarCoracao(lis[i][j]);
+    }
   }
   else{
     lis[i]=[];
   }
+}
+lisItens=Array.from(lis[2]);
+
+for(let i=0; i<botoes.length; i++){
+  criarCoracao(botoes[i]);
 }
 
 const pItemUsado=document.querySelector("#voceComeu");
@@ -3886,7 +4720,7 @@ const pExtra=document.querySelector("#extra");
 
 function cura(qtd){
   let curouTudo=false;
-  hp+=qtd;
+  hp+=qtd+bonusItem;
   if(hp>=hpMax){
     hp=hpMax;
     curouTudo=true;
@@ -3897,6 +4731,7 @@ function cura(qtd){
 function inicRonda(){
   // Chamada antes de começar o ataque do boss
 
+  elAtual.classList.remove("hasHeart");
   if(texto.length){
     emJogo=0;
     balao.classList.remove("oculto");
@@ -3919,14 +4754,14 @@ function atualizaVidaOpon(){
 
 function dano(obst){ // Quando é atingido por um obstáculo
   const resto=invul;
-  hp-=tut? 0.1: obst.dano;
+  hp-=tut? 0.1: obst.dano*multDano;
   atualizaVida();
   if(Math.round(hp)<=0){
     alert("vc morreu rsrs.");
     exit();
     return;
   }
-  invul=obst.invul+resto;
+  invul=obst.invul*multInvul+resto;
 }
 
 function frame(funcFrameAntes,funcFrameDepois,funcFim){
@@ -3944,7 +4779,7 @@ function frame(funcFrameAntes,funcFrameDepois,funcFim){
 
   // Movimento
 
-  mult=velPlayer; // Velocidade base do coração (pode mudar pra ficar + ou - rápido)
+  mult=velPlayer*multVel; // Velocidade base do coração (pode mudar pra ficar + ou - rápido)
   if(multFF<0) mult*=-1;
 
   {
@@ -4070,7 +4905,6 @@ function frame(funcFrameAntes,funcFrameDepois,funcFim){
 
 const divMenu=document.querySelector("#menu");
 const btnClose=document.querySelector("#close");
-const modais=document.querySelectorAll(".modal");
 
 let btnsFechar=[];
 function fechaModal(el){
@@ -4110,14 +4944,24 @@ btnsMenu[2].addEventListener("click",function () {
   inicFase();
 });
 
-btnsMenu[4].addEventListener("click",function () {
+btnsMenu[3].addEventListener("click",function () {
   abreModal(0);
 });
 btnsMenu[5].addEventListener("click",function () {
   abreModal(1);
 });
+btnsMenu[6].addEventListener("click",function () {
+  abreModal(2);
+});
 
 btnClose.addEventListener("click",exit);
+
+modais[2].addEventListener("click",function (e) {
+  if(e.target.tagName!="LI"){
+    descInv.classList.add("oculto");
+    aneInv.classList.remove("oculto");
+  }
+});
 
 
 // Treinamento

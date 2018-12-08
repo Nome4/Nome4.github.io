@@ -5,12 +5,13 @@
 }
 html{
   font-size: 1px;
+  height:100%;
 }
 body{
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 100vh;
+  height: 100%;
   overflow: hidden;
   background-color: #000000;
   color: white;
@@ -57,9 +58,6 @@ body{
   height: 1em;
   width: 1em;
   z-index: 2;
-}
-#coracaoErrante{
-  position: fixed;
 }
 .arredondador{
   position: absolute;
@@ -438,7 +436,7 @@ body{
   color:var(--corBtn);
   border:2rem solid var(--corBtn);
   font-size: 32rem;
-  padding:6rem 9rem 6rem 39rem;
+  padding:6rem 9rem;
   outline: none;
 }
 #botoes>button:not(:first-child){
@@ -485,6 +483,20 @@ body{
   content: "";
   display: block;
   clear: both;
+}
+
+.tx .coracao{
+  left:0;
+  top:50%;
+  transform: translateY(-50%);
+}
+#botoes .coracao{
+  position: relative;
+  margin-right: 6rem;
+  display: inline-block;
+}
+:not(.hasHeart)>.coracao{
+  visibility: hidden;
 }
 
 
@@ -665,7 +677,7 @@ button{
   background: none;
   color:inherit;
 }
-#menu button{
+#menu button,#close,.meter{
   cursor: pointer;
 }
 #menu header{
@@ -703,6 +715,7 @@ button{
   position: relative;
   display: block;
   width:100%;
+  box-sizing: border-box;
   margin-top: 24rem;
   padding: 6rem 9rem;
   font-size: 28rem;
@@ -729,16 +742,19 @@ button{
   background-color:rgba(255,255,255,0.5);
   opacity:1;
   display: flex;
-  justify-content: center;
-  align-items: center;
   transition: visibility 250ms linear,opacity 250ms linear;
   font-family: sans-serif;
   font-size: 16rem;
+}
+.autosized .modal{
+  justify-content: center;
+  align-items: center;
 }
 .modal>*{
   background-color: black;
   border: 3rem solid white;
   padding: 20rem 32rem;
+  position: relative;
 }
 .modal:not(.visivel){
   visibility: hidden;
@@ -773,12 +789,17 @@ button{
   padding-bottom: 12rem;
 }
 
-.modal>*>p,.modal .p{
+.modal p,.modal .p{
+  padding-bottom: 12rem;
+}
+.modal h4{
+  padding-top: 8rem;
+  font-size: 16rem;
   padding-bottom: 12rem;
 }
 
 .modal>*>:last-child{
-  padding-bottom: 0;
+  padding-bottom: 0 !important;
 }
 
 
@@ -965,15 +986,100 @@ button{
 
 /* Controles */
 
-#controles dt,#controles dd{
+.modal dd,.modal dt{
   display: inline;
 }
-#controles dl>*{
-  margin-bottom:12rem;
-}
-#controles dt{
+.modal dt{
   font-weight: bold;
 }
-#controles dt::after{
+.modal dt::after{
   content: ": ";
+}
+.modal dl>:not(:last-child){
+  padding-bottom: 12rem;
+}
+.modal dl{
+  padding-bottom: 12rem;
+}
+
+
+/* Itens */
+
+#itens table{
+  table-layout: fixed;
+  border-collapse: collapse;
+  width: 100%;
+}
+#itens td :last-child{
+  padding-bottom: 0 !important;
+}
+#itens tr:first-child>td{
+  width: 33.333%;
+  box-sizing: border-box;
+}
+#itens td{
+  vertical-align: top;
+}
+#itens h2,#itens h3{
+  padding-top:0;
+}
+#itens tr:not(:last-child)>td{
+  padding-bottom: 12rem;
+  border-bottom: 1rem solid white;
+}
+#itens tr:not(:first-child)>td{
+  padding-top: 12rem;
+}
+#itens td:not(:last-child){
+  border-right: 1rem solid white;
+  padding-right:16rem;
+}
+#itens td:not(:first-child){
+  padding-left:16rem;
+}
+#itens td:first-child{
+  border-right: 4rem double white;
+}
+
+ul.itens{
+  margin-bottom: -6rem;
+  padding-bottom: 12rem;
+  box-sizing: border-box;
+  user-select: none;
+}
+.itens li{
+  margin-bottom: 6rem;
+  cursor:pointer;
+  white-space: nowrap;
+  display: inline-block;
+}
+dl.itens>div{
+  display: flex;
+}
+dl.itens dd{
+  flex:0 1 100%;
+}
+.itens dd li{
+  position: relative;
+  top:-3rem;
+  display: inline-block;
+  left:0.25em;
+  margin: 0;
+}
+.itens li::before{
+  content: "- ";
+}
+.itens.cols2>li{
+  width:50%;
+}
+.itens.cols4>li{
+  width:25%;
+}
+.abs{
+  position: absolute !important;
+  width: auto !important;
+  user-select: none;
+}
+.abs.hasTransition{
+  transition: left 250ms ease-in-out,top 250ms ease-in-out;
 }

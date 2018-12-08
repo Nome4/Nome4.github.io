@@ -66,6 +66,7 @@
         <div>
           <button>Novo jogo</button>
           <button>Continuar jogo
+            <!-- Por que diabos é considerado inválido colocar um DIV dentro de um botão?!? Funcionou então vai ficar assim mesmo, dane-se. -->
             <div class="tooltip left">
               <div>
                 <dl id="ttSave"></dl>
@@ -74,6 +75,7 @@
             </div>
           </button>
           <button>Tutorial</button>
+          <button>Treinamento</button>
         </div>
         <div>
           <button id="dif">Dificuldade
@@ -90,8 +92,9 @@
               </div>
             </div>
           </button>
-          <button>Treinamento</button>
           <button>Controles</button>
+          <button>Itens</button>
+          <button disabled>Em breve</button>
         </div>
       </nav>
       <div class="modal">
@@ -133,7 +136,7 @@
               <dd>Abre o Menu Hacker!</dd>
             </div>
           </dl>
-          <h3>E lembre-se:</h3>
+          <h3>Regras das cores</h3>
           <dl>
             <div>
               <dt class="txAzul">Azul</dt>
@@ -145,18 +148,73 @@
             </div>
             <div>
               <dt>Branco</dt>
-              <dd>Fuja!</dd>
+              <dd>Desvie!</dd>
             </div>
           </dl>
+        </section>
+      </div>
+      <div class="modal">
+        <section style="width:666rem" id="itens">
+          <table>
+            <tr>
+              <td>
+                <h3>Seus stats</h3>
+                <dl>
+                  <div>
+                    <dt>Ataque</dt>
+                    <dd id="ddAtk">5</dd>
+                  </div>
+                  <div>
+                    <dt>Defesa</dt>
+                    <dd id="ddDef">5</dd>
+                  </div>
+                </dl>
+              </td>
+              <td id="inventario">
+                <h3>Inventário</h3>
+                <ul class="itens cols2" id="seus"></ul>
+              </td>
+              <td id="equips">
+                <h3>Equipamentos</h3>
+                <dl class="itens">
+                  <div>
+                    <dt>Defesa</dt>
+                    <dd></dd>
+                  </div>
+                  <div>
+                    <dt>Arma</dt>
+                    <dd></dd>
+                  </div>
+                </dl>
+              </td>
+            </tr>
+            <tr>
+              <td id="info">
+                <div id="aneInv">
+                  <p>Clique em um item para ver sua descrição.</p>
+                  <p>Arraste os itens que você desejar até os campos "inventário" e "equipamentos".</p>
+                </div>
+                <div id="descAtual" class="oculto">
+                  <h3>teste</h3>
+                  <p>lorem ipsulon</p>
+                </div>
+              </td>
+              <td colspan="2" id="inv">
+                <h3>Itens não equipados</h3>
+                <h4>Consumíveis</h4>
+                <ul id="cons" class="itens cols4"></ul>
+                <h4>Defesa</h4>
+                <ul id="def" class="itens cols4"></ul>
+                <h4>Ataque</h4>
+                <ul id="atk" class="itens cols4"></ul>
+              </td>
+            </tr>
+          </table>
         </section>
       </div>
     </div>
     <div id="app" class="oculto">
       <button id="close" class="fechar"></button>
-      <div id="coracaoErrante" class="coracao">
-        <div class="arredondador"></div>
-        <div class="arredondador"></div>
-      </div>
       <figure id="oponente">
         <div id="barraOpon" class="pseudoOculto">
           <div id="vidaOpon"></div>
@@ -171,7 +229,7 @@
       </figure>
       <div id="jogo-wrapper">
         <div id="jogo">
-          <div id="batalha">
+          <div id="batalha" class="hasHeart">
             <div id="coracao" class="coracao">
               <div class="arredondador"></div>
               <div class="arredondador"></div>
@@ -206,15 +264,16 @@
           </div>
           <div id="item" class="tx">
             <ul class="dlpl">
-              <li>Pie</li>
-              <li>Steak</li>
-              <li>Steak</li>
-              <li>Steak</li>
-              <li>Sea Tea</li>
-              <li>Sea Tea</li>
-              <li>L. Hero</li>
-              <li>L. Hero</li>
+              <li></li>
+              <li></li>
+              <li></li>
+              <li></li>
+              <li></li>
+              <li></li>
+              <li></li>
+              <li></li>
             </ul>
+            <p id="bobocabo" class="oculto">Você não tem itens ;-;</p>
           </div>
           <div id="mercy" class="tx">
             <ul>
