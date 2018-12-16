@@ -22,7 +22,7 @@ delete HTMLImageElement.prototype.y;
 const r2=Math.sqrt(2);
 
 // Versão do jogo. Se não for compatível, deleta o save antigo.
-const versao=1;
+const versao=2;
 
 
 // Html's
@@ -101,12 +101,12 @@ function getValue(i){
 // Relativas à luta
 
 let larg,alt; // Largura e altura do div de batalha
-let x,y,velX=0,velY=0,velRealX,velRealY,hpMax,hp,invul,xAnt,yAnt; // Variáveis relativas ao coraçãozinho
+let x,y,velX,velY,velRealX,velRealY,hpMax,hp,invul,xAnt,yAnt; // Variáveis relativas ao coraçãozinho
 let direcaoHab,estaRapido;
 let mult; /* Multiplicador da velocidade. Para torná-la constante, ela é dividida por Math.sqrt(2) quando o coração está
   movendo na diagonal. */
 const hbc=6,roac=12; // hbc = hitbox do coração, roac = raio real
-let premidas=[],tamPremidas=0; /* Guarda as teclas já apertadas, para ignorar novos eventos de aperto dela. Isso é necessário
+let premidas,tamPremidas; /* Guarda as teclas já apertadas, para ignorar novos eventos de aperto dela. Isso é necessário
   pois, se você segurar uma tecla por um tempo, o JavaScript começa a detectar vários eventos de click. */
 let t,ronda,fase,emJogo,tFim,fases,naoEPrimeira; // Relativas à fase
 let dific,acelerando,incrDificSubito=0.2,incrDificGradual,dificUsuario,meterValue,rondaFim;
@@ -192,7 +192,7 @@ Atende por \"João Peludão\"");
       <div><dt>HP do oponente</dt><dd>"+loaded.hpOpon.toFixed(0)+"</dd></div>\
       <div><dt>Itens</dt><dd>"+strItens+"</dd></div>\
       <div><dt>Defesa</dt><dd>"+removerUndefined(loaded.prot)+"</dd></div>\
-      <div><dt>Arma</dt><dd>"+removerUndefined(loaded.arma)+"</dd></div>\
+      <div><dt>Arma</dt><dd>"+(removerUndefined(loaded.arma)+(loaded.pularProx? " (recarregando)": ""))+"</dd></div>\
     ";
   }
   catch(e){
@@ -296,7 +296,7 @@ function equiparArma(){
     intv=250;
     tt=1000;
     fadeStart=15*tt/19;
-    penalidades=[0.64,0.76,0.88,1.12];
+    penalidades=[0.76,0.84,0.92,1.13];
   }
   else if(arma.nome=="Panela"){
     numBarras=5;
@@ -1190,6 +1190,20 @@ function resetRonda(){
   }
 
   if(treinando==-1 && (notTut || ronda>7)){
+    function recarregarRevolver(){
+      if(pularProx){
+        mudarDivId("itemUsado");
+        pItemUsado.innerHTML="Você passa esse turno recarregando seu revólver.";
+        pHpCurado.innerHTML=pExtra.innerHTML="";
+        emJogo=-3;
+        pularProx=false;
+      }
+      else{
+        mudarDivId("ane");
+        emJogo=-1;
+      }
+    }
+
     if(notTut){
       if(fase>=fases.length){
         fase=0;
@@ -1232,7 +1246,8 @@ function resetRonda(){
             "{\"hp\":"+hp+",\"hpOpon\":"+hpOpon+",\"itens\":"+strItens+
             ",\"ronda\":"+ronda+",\"rondaFim\":"+rondaFim+
             ",\"arma\":\""+arma.nome+"\",\"prot\":\""+prot.nome+
-            '","versao":1'+ // Evitar problemas com saves antigos
+            '","pularProx":'+pularProx+
+            ',"versao":'+versao+ // Evitar problemas com saves antigos
           "}");
         }
 
@@ -1248,18 +1263,12 @@ function resetRonda(){
       div.classList.add("hasTransition");
       timeoutApagavel(function () {
         div.classList.remove("hasTransition");
-        if(pularProx){
-          mudarDivId("itemUsado");
-          pItemUsado.innerHTML="Você passa esse turno recarregando seu revólver.";
-          pHpCurado.innerHTML=pExtra.innerHTML="";
-          emJogo=-3;
-          pularProx=false;
-        }
-        else{
-          mudarDivId("ane");
-          emJogo=-1;
-        }
+        recarregarRevolver();
       },500);
+    }
+
+    else{
+      recarregarRevolver();
     }
   }
 
@@ -3313,10 +3322,14 @@ function showCheck(i){
 }
 
 
-addEventListener("keyup",function (e) {
+function keyup(e){
+  if(e.which==27){
+    exit();
+  }
+
   // Reverte mudanças na velocidade quando solta tecla
 
-  if(e.which<=40&&e.which>=37&&tamPremidas>0){ // Se não for setinha, ignorar
+  else if(e.which<=40&&e.which>=37&&tamPremidas>0){ // Se não for setinha, ignorar
     tamPremidas--;
     for(let i=0; i<=tamPremidas; i++){
       if(e.which==premidas[i]){
@@ -3325,12 +3338,6 @@ addEventListener("keyup",function (e) {
       }
     }
     mudaVel(e.which,-1);
-  }
-});
-
-function keyup(e){
-  if(e.which==27){
-    exit();
   }
 }
 
@@ -3498,19 +3505,6 @@ function sumirDivEPreparar(fDepois){
   prepararFase(fDepois);
 }
 
-
-addEventListener("keydown",function (e) {
-  // Ignorar evento em teclas já abaixadas
-
-  if(e.which<=40&&e.which>=37){
-    for(let i=0; i<tamPremidas; i++){
-      if(e.which==premidas[i]) return;
-    }
-    premidas.push(e.which);
-    tamPremidas++;
-    mudaVel(e.which,1);
-  }
-});
 
 function keydown(e){
   // Fim da luta
@@ -3889,6 +3883,18 @@ function keydown(e){
       pararTexto();
     }
   }
+
+
+  else{
+    if(e.which<=40&&e.which>=37){
+      for(let i=0; i<tamPremidas; i++){
+        if(e.which==premidas[i]) return;
+      }
+      premidas.push(e.which);
+      tamPremidas++;
+      mudaVel(e.which,1);
+    }
+  }
 }
 
 
@@ -4206,7 +4212,6 @@ function inicFase(){ // Chamada quando o jogo inicia
   velPlayer=2;
   hpMax=76;
   acelerando=false;
-  pularProx=false;
   sairQlqrTecla=false;
   elsTemps=[];
   divMenu.classList.add("oculto");
@@ -4215,6 +4220,11 @@ function inicFase(){ // Chamada quando o jogo inicia
   texto=[];
   tLuta=[];
   spansLetra=[];
+  velX=0;
+  velY=0;
+  premidas=[];
+  tamPremidas=0;
+
 
 
   function padrao(){
@@ -4232,6 +4242,7 @@ function inicFase(){ // Chamada quando o jogo inicia
     itens=Array.from(seus);
     arma=itemDds[1][0]||{};
     prot=itemDds[0][0]||{};
+    pularProx=false;
   }
 
 
@@ -4275,6 +4286,7 @@ function inicFase(){ // Chamada quando o jogo inicia
       hpOpon=loaded.hpOpon;
       rondaFim=loaded.rondaFim;
       itens=[];
+      pularProx=loaded.pularProx;
 
       if(ronda>fases.length){
         acelerando=true;
@@ -4867,7 +4879,7 @@ function frame(funcFrameAntes,funcFrameDepois,funcFim){
       coracao.classList.remove("pseudoOculto");
     }
   }
-  else if(invul<=0){
+  else if(invul<=0 && !(numChaves==chavesObtidas)){
     // Hitbox!!!
     // A hitbox do coração está sendo assumida como circular de raio 6 (hbc==6).
 
