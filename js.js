@@ -4879,7 +4879,7 @@ function frame(funcFrameAntes,funcFrameDepois,funcFim){
       coracao.classList.remove("pseudoOculto");
     }
   }
-  else if(invul<=0 && !(numChaves==chavesObtidas)){
+  else if(invul<=0 && !(numChaves && numChaves==chavesObtidas)){
     // Hitbox!!!
     // A hitbox do coração está sendo assumida como circular de raio 6 (hbc==6).
 
