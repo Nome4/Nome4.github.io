@@ -1,4 +1,4 @@
-"use strict"; // Ajuda a debugar o código
+"use strict";
 
 /*console.log("Analise o código fonte para achar a palavra secreta que te faz ganhar!");
 {
@@ -4271,7 +4271,7 @@ function inicFase(){ // Chamada quando o jogo inicia
     }
     else{
       dific=1;
-      fases=fasesPadrao;
+      fases=[...fasesPadrao];
     }
 
     if(incrDificGradual==undefined){
